@@ -4,6 +4,7 @@ let characterNames = ["Archer","Ember","Necromancer","Shadow","Yassuo"];
 let entities = [];
 let isCharacterSelected = false;
 let attackId = 0;
+let idealTime = 16.6667;
 class Character{
     constructor(){
         this.mass; 
@@ -76,7 +77,9 @@ class Character{
         }
     }
     takeDamage(dmg){
-        this.hp -= dmg;
+        if(!this.dodging){
+            this.hp -= dmg;
+        }
     }
     processSquareAttack(x,y,dmg,enemyScaleX,enemyScaleY,sizeX,sizeY,type,atckId){
         let scaleFactorX = scaleX/enemyScaleX;
@@ -335,8 +338,9 @@ class Character{
         }
         let scaledVelX = this.velocity.x * scaleX;
         let scaledVelY = this.velocity.y * scaleY;
-        let scaledVel = createVector(scaledVelX,scaledVelY);
-        this.position.add(scaledVel);
+        let finalVel = createVector(scaledVelX,scaledVelY);
+        console.log(finalVel);
+        this.position.add(finalVel);
         this.constrainEdges();
     }
 }
@@ -347,7 +351,7 @@ class Archer extends Character{
         this.buttonIndex = 0;
         this.mass = .75; 
         this.basehp = 100; //100
-        this.basespeed = 7;
+        this.basespeed = 10;
         this.basepower = 10; 
         this.baseresistance = 2; 
         this.spriteIndex = 0;
@@ -373,9 +377,10 @@ class Ember extends Character{
         super();
         this.name = "Ember";
         this.buttonIndex = 2;
+        this.fire = 0;
         this.mass = 1; 
         this.basehp = 125;
-        this.basespeed = 5;
+        this.basespeed = 8;
         this.basepower = 20; 
         this.baseresistance = 2; 
         this.spriteIndex = 1;
@@ -390,8 +395,12 @@ class Ember extends Character{
             this.basicAnimation.push(img);
         }
         this.bodyType = "square";
+        this.maxFire = 100;
+        this.executePassive();
         this.fireburst = new FireBurst();
         this.hotstreak = new HotStreak();
+        this.firetrap = new FireTrap();
+        this.firetrapDuration = 7;
     }
     show(){
         textSize(35);
@@ -399,6 +408,10 @@ class Ember extends Character{
         textAlign(CENTER, CENTER);
         text(this.name,this.position.x,this.position.y-this.size.y/1.5);
         tint(this.opacity,255);
+        fill(52);
+        rect(this.position.x-this.size.x/2, this.position.y - this.size.x,this.maxFire,20);
+        fill(255,30,30);
+        rect(this.position.x-this.size.x/2, this.position.y - this.size.x,this.fire,20);        
         image(this.sprite,this.position.x,this.position.y,128*scaleX,128*scaleY);
         tint(255,255);
         // find the opposite, find the y to calculate the hypotenuse 
@@ -433,13 +446,15 @@ class Ember extends Character{
 
         this.updateAbilityOne();
         this.updateAbilityTwo();
+        this.updateAbilityThree();
     }
     sendCharacterData(){
         let health = this.hp/this.maxHealth
         socket.emit("enemy-char-data",{percentHealth: health,room:roomId});
     }
     executeAbilityOne(){
-        if(!this.fireburst.active){
+        if(!this.fireburst.active && this.fire > 20){
+            this.fire -= 20;
             this.fireburst = new FireBurst();
             this.fireburst.activate(this.position.x,this.position.y);
         }
@@ -450,7 +465,8 @@ class Ember extends Character{
         }
     }
     executeAbilityTwo(){
-        if(!this.hotstreak.active){
+        if(!this.hotstreak.active && this.fire > 30){
+            this.fire -= 30;
             this.hotstreak = new HotStreak();
             this.hotstreak.activate(this.dirBlocked,this.position.x,this.position.y+this.size.y/2);
             this.freeMove = false;
@@ -460,9 +476,30 @@ class Ember extends Character{
     }
     updateAbilityTwo(){
         if(this.hotstreak.active){
-            console.log("Active Hot Streak");
-            console.log(this.hotstreak.duration);
-            this.hotstreak.update(this.position.x,this.position.y);
+            this.hotstreak.update(this.position.x,this.position.y+this.size.y/2);
         }
     }
+    executeAbilityThree(){
+        if(!this.firetrap.active && this.fire > 40){
+            this.fire -= 40;
+            this.firetrap = new FireTrap(this.position.x-this.size.x/2,this.position.y+this.size.y/4,7,5);
+            this.firetrap.place();
+        } else if(this.firetrap.active && !this.firetrap.activated && this.firetrap.duration < this.firetrapDuration-1){
+            this.firetrap.activate();
+        } 
+        console.log(this.firetrap.active);
+    }
+    updateAbilityThree(){
+        if(this.firetrap.active){
+            this.firetrap.update();
+        }
+    }
+    executePassive(){
+        setTimeout(() => {
+            this.fire++;
+            this.fire = constrain(this.fire,0,this.maxFire);
+            this.executePassive();
+        },375)
+    }
+
 }

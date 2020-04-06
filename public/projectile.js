@@ -85,7 +85,6 @@ class FireBall extends Projectile{
         return data;
     }
 }
-// traps 
 // projectiless
 class Fire{
     constructor(x,y,duration,dmg){
@@ -98,7 +97,7 @@ class Fire{
         this.alive = true;
     }
     burn(){
-        if(random() > 0.6){
+        if(random() > 0.8){
             this.fireballs[this.fireballs.length] = new FireBall(this.position.x + random(-40,40),this.position.y,this.velocity,10,this.fballSzie,this.dmg);
         }
     }

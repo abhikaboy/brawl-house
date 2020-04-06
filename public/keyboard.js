@@ -25,6 +25,9 @@ function keyDownHandle(event) {
         case 50:
             character.executeAbilityTwo();
             break;
+        case 51:
+            character.executeAbilityThree();
+            break;
     }
 }
 function keyUpHandle(event) {

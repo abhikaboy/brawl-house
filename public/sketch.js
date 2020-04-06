@@ -8,6 +8,9 @@ let enemyProjectiles = [];
 let healthbar;
 let entitySprites = [];
 let weaponSprites = [];
+let deltaTime;
+let time;
+let timeLastFrame;
 function preload(){
     selectScreen = loadImage("/Web Assets/Character Selection/Character Selection Screen.jpg");
     statScreen = loadImage("/Web Assets/Character Selection/Stat Pick.jpg");
@@ -19,7 +22,7 @@ function preload(){
     for(let i=0; i< 5;i++){
         characterSprites.push(loadImage("/Web Assets/Character/" + characterNames[i] + ".png"));
     }
-    for(let i=0; i<1;i++){
+    for(let i=0; i<2;i++){
         weaponSprites.push(loadImage("/Web Assets/Character/Weapons/basic" +i+".png"));
     }
     entitySprites = characterSprites; // for now
@@ -86,10 +89,14 @@ function draw(){
                 drawStatSelectScreen();
                 selectHandleStatReady();
             }
+            timeLastFrame = Date.now();
             break;
         case "skill-waiting":
             break;
-        case "gameplay":      
+        case "gameplay":
+            // time = Date.now();
+            // deltaTime = time - timeLastFrame; 
+            // timeLastFrame = time;     
             for(let i = 0; i < entities.length; i++){
                 entities[i].resetForces();
             }
@@ -134,7 +141,7 @@ function draw(){
 
             fill(255);
             textSize(25);
-            text(getFrameRate(),500,100);      
+            text(getFrameRate(),500,100);    
             break;
     }
     particles.forEach(particleHandle);

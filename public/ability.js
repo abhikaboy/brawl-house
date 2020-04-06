@@ -122,3 +122,65 @@ class HotStreak extends Ability{
         },250)
     } 
 }
+// traps 
+class FireTrap{
+    constructor(x,y,duration,dmg){
+        this.position = createVector(x,y);
+        this.duration = duration;
+        this.dmg = dmg;
+        this.fireBalls = [];
+        this.activated = false;
+        this.maxFireBalls = 10;
+        this.active = false;
+    }
+    place(){
+        this.decay();
+        this.active = true;
+    }
+    update(){
+        if(this.activated){
+            for(let i = 0; i < this.fireBalls.length; i++){
+                let current = this.fireBalls[i];
+                current.update();
+                if(current.finished()){
+                    this.fireBalls.splice(i,1);
+                    projectiles.splice(projectiles.indexOf(this.fireBalls[i]));
+                }
+            }
+            if(this.fireBalls.length == 0){
+                this.active = false;
+            }
+        } else {
+            this.show();
+            if(this.duration <= 0){
+                this.activate();
+            }
+        }
+    }
+    activate(){
+        if(!this.activated){
+            this.activated = true;
+            let size = createVector(50,50);
+            for(let i = 0; i < this.maxFireBalls; i++){
+                let dir = createVector(random(-30,30),random(-30,30));
+                this.fireBalls[this.fireBalls.length] = new FireBall(this.position.x,this.position.y,
+                dir,25, size,this.dmg)
+            }
+
+        }
+    }
+    show(){
+        fill(255,50,50);
+        rect(this.position.x,this.position.y,screen.width*0.05,20);
+    }
+    decay(){
+        setTimeout(() => {
+            if(this.duration > 0){
+                this.duration -= 0.25;
+                this.decay();
+            } else {
+                this.alive = false;
+            }
+        },250)        
+    }
+}
