@@ -1,0 +1,115 @@
+body{
+    background: black;
+    overflow: hidden;
+}
+video {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    min-width: 100%;
+    min-height: 100%;
+}
+@keyframes flyIn{
+    0%{
+        transform: translateX(-1000px);
+        opacity:0;
+    }
+    100%{
+        transform: translateX(-300px);
+        opacity:1;
+    }
+}
+@keyframes flyToPos{
+    0%{
+        transform: translateX(-1000px);
+        opacity:0;
+    }
+    50%{
+        transform: translateX(-1000px);
+        opacity:0;
+    }
+    100%{
+        transform: translateX(0px);
+        opacity:1;
+    }
+}
+canvas{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index:4;
+    mix-blend-mode: screen;
+}
+.title {
+    position:relative;
+    transform: translateX(-300px);
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    z-index: 3;
+    font-family: 'Raleway', sans-serif;
+    font-size: 6vw;
+    color: white;
+    animation: flyIn;
+    animation-duration: 2s;
+    animation-delay: 1s;
+}
+
+#glow{
+    z-index: 2;
+    mix-blend-mode: screen;
+}
+#charSelect{
+    display: none;
+    background-image: url("/Web Assets/Character Selection/Character Selection Screen.jpg");
+    background-size: contain;
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-size: 100% 100%;
+}
+.videoBackground{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+}
+.mainButton{
+    position: absolute;
+    color: white;
+    font-family: 'Raleway', sans-serif;
+    animation: flyToPos;
+    font-size: 5vw;
+    width: 40%;   
+    z-index: 5;
+    padding-left: 10%;
+    opacity:1;
+    animation-delay:0s;    
+    padding-bottom: 20px;
+    padding-top: 10px;
+}
+#play{
+    top:30%;
+    animation-duration:4s;
+}
+.mainButton:hover{
+    background-image: linear-gradient(to right,rgb(255, 96, 96),rgba(255,0,0,0));
+    background-blend-mode: color-burn;
+}
+#login{
+    top:40%;
+    animation-duration:5s;
+}
+#register{
+    top:50%;
+    animation-duration:6s;
+}
+
+
+
+
+
+

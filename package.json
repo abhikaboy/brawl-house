@@ -1,0 +1,15 @@
+{
+  "name": "brawl-house",
+  "version": "1.0.0",
+  "description": "brawl house boys",
+  "main": "sever.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Abhik Ray",
+  "license": "ISC",
+  "dependencies": {
+    "socket.io": "*",
+    "express": "*"
+  }
+}
