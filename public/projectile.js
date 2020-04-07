@@ -46,6 +46,63 @@ class Projectile{
 
     }
 }
+class Arrow extends Projectile{
+    constructor(x,y,dir,dmg){
+        super();
+        this.position = createVector(x,y);
+        this.castLocation = createVector(x,y);
+        this.velocity = dir;
+        this.acceleration = createVector(0,1);
+        this.name = "Arrow";
+        attackId++;
+        this.attackId = attackId;
+        this.dmg = dmg;
+        this.size = createVector(26*5,8*5);
+        this.duration = 1;
+        this.active;
+        this.rotation;
+        this.flip;
+        this.active = true;
+    }
+    show(){
+        let hypotenuse = Math.pow(Math.pow(this.velocity.x,2) + Math.pow(this.velocity.y,2),0.5);
+        let angle;
+        if(hypotenuse != 0){
+            angle = (this.position.y > this.castLocation.y) ? -asin(this.velocity.x / hypotenuse)-180:asin(this.velocity.x / hypotenuse);
+        }
+        this.rotation = 90+angle;
+        push();
+        translate(this.position.x,this.position.y);
+        rotate(this.rotation);
+        scale(-1,1);
+        image(arrow,0,0,this.size.x*scaleX,this.size.y*scaleY);
+        pop();
+    }
+    update(){
+        if(this.active){
+            this.position.add(this.velocity);
+            this.velocity.add(this.acceleration);
+            this.show();
+            this.sendSquareAttack(this.attackId);
+        }
+    }
+    getSendableData(){
+        let data = {x:this.position.x, y:this.position.y,width:this.size.x,height:this.size.y,name:this.name,scaleX:scaleX,scaleY:scaleY
+        ,flip:this.flip,rotation:this.rotation,castX: this.castLocation.x,castY: this.castLocation.y};
+        return data;
+    }
+    decay(){
+        setTimeout(() => {
+            this.duration -= 0.1;
+            if(this.duration <= 0){
+                this.active = false;
+                projectiles.splice(projectiles.indexOf(this));
+            } else {
+                this.decay();
+            }
+        },100)
+    }
+}
 class FireBall extends Projectile{
     constructor(x,y,dir,radius,size,dmg){
         super();
@@ -81,7 +138,7 @@ class FireBall extends Projectile{
     }
     getSendableData(){
         let data = {r:this.r,g:this.g,b:this.b,alpha:this.alpha,x:this.position.x,
-            y:this.position.y,radius:this.radius,name:this.name};
+            y:this.position.y,radius:this.radius,name:this.name,scaleX:scaleX,scaleY:scaleY};
         return data;
     }
 }
@@ -128,6 +185,7 @@ class Fire{
                 this.decay();
             } else {
                 this.alive = false;
+                this.die();
             }
         },250)
     }

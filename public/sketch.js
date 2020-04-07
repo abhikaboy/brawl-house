@@ -11,6 +11,10 @@ let weaponSprites = [];
 let deltaTime;
 let time;
 let timeLastFrame;
+let weaponSpritesAnimations = [];
+let arrow;
+// have a 2d array, first layer is the sprite sheet the second is the frames
+let animationFrames = [8,]
 function preload(){
     selectScreen = loadImage("/Web Assets/Character Selection/Character Selection Screen.jpg");
     statScreen = loadImage("/Web Assets/Character Selection/Stat Pick.jpg");
@@ -25,6 +29,7 @@ function preload(){
     for(let i=0; i<2;i++){
         weaponSprites.push(loadImage("/Web Assets/Character/Weapons/basic" +i+".png"));
     }
+    arrow = loadImage("/Web Assets/Character/Weapons/Archer Arrow.png");
     entitySprites = characterSprites; // for now
 }
 
@@ -50,6 +55,18 @@ function setup(){
     // openFullscreen();
     angleMode(DEGREES); 
     let canvas = createCanvas(screen.width,screen.height);
+    for(let i=0; i<weaponSprites.length;i++){
+        let frames = 8;
+        weaponSpritesAnimations[i] = [];
+        console.log(weaponSpritesAnimations[0]);
+        for(let j = 0; j< frames; j++){
+            let frameSize = (i == 0) ? 40:32; 
+            console.log(frameSize + " frame size");
+            let img = weaponSprites[i].get(j*frameSize,0,frameSize,frameSize);
+            weaponSpritesAnimations[i].push(img);
+        }
+        console.log(i);
+    }
 }
 
 function draw(){
@@ -111,21 +128,45 @@ function draw(){
             }
             character.sendCharacterData();
             for(let i = 0; i < enemyEntities.length; i++){
+                let scaleFactorX = scaleX/enemyEntities[i].scale;
+                let scaleFactorY= scaleY/enemyEntities[i].scale;
                 textSize(35);
                 fill(255);
-                let x = enemyEntities[i].x * (scaleX/enemyEntities[i].scale);
-                let y = enemyEntities[i].y * (scaleY/enemyEntities[i].scale);
+                let x = enemyEntities[i].x * (scaleFactorX);
+                let y = enemyEntities[i].y * (scaleFactorY);
                 text(enemyEntities[i].name,x,y-100);
                 tint(enemyEntities[i].opacity,255);
                 image(entitySprites[enemyEntities[i].sprite],x,y,128*scaleX,128*scaleY);
                 tint(255,255);
+
+                // drawing the weapon 
+                push();
+                translate(enemyEntities[i].weaponPosX*scaleFactorX,enemyEntities[i].weaponPosY*scaleFactorY);
+                rotate(enemyEntities[i].weaponRotation);
+                if(enemyEntities[i].flipWeapon){
+                    scale(1,-1);
+                }
+                //let img = weaponSprites[enemyEntities[i].weaponSprite].get(enemyEntities[i].animationFrame,0,enemyEntities[i].weaponSpriteSize,enemyEntities[i].weaponSpriteSize);
+                image(weaponSpritesAnimations[enemyEntities[i].weaponSprite][enemyEntities[i].animationFrame],0,0,enemyEntities[i].weaponSpriteSize*scaleX*5,enemyEntities[i].weaponSpriteSize*scaleX*5);
+                pop();
             }
             for(let i = 0; i < enemyProjectiles.length; i++){
+                let scaleFactorX = scaleX/enemyProjectiles[i].scaleX;
+                let scaleFactorY = scaleY/enemyProjectiles[i].scaleY;
                 console.log("Updating The Enemy Projectiles")
                 switch(enemyProjectiles[i].name){
                     case "Fireball":
                         fill(enemyProjectiles[i].r,enemyProjectiles[i].g,enemyProjectiles[i].b,enemyProjectiles[i].alpha);
-                        ellipse(enemyProjectiles[i].x,enemyProjectiles[i].y,enemyProjectiles[i].radius*2,enemyProjectiles[i].radius*2);
+                        ellipse(enemyProjectiles[i].x*scaleFactorX,enemyProjectiles[i].y*scaleFactorY,enemyProjectiles[i].radius*2,enemyProjectiles[i].radius*2);
+                        break;
+                    case "Arrow":
+                        push();
+                        translate(enemyProjectiles[i].x*scaleFactorX,enemyProjectiles[i].y*scaleFactorY);
+                        rotate(enemyProjectiles[i].rotation);
+                        scale(-1,1);
+                        image(arrow,0,0,enemyProjectiles[i].width*scaleFactorX,enemyProjectiles[i].height*scaleFactorX);
+                        pop();
+                        // image(arrow,enemyProjectiles[i].x*scaleFactorX,enemyProjectiles[i].y*scaleFactorY,enemyProjectiles[i].width,enemyProjectiles[i].height);
                 }
             }
             sendAllEntities();

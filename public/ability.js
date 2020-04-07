@@ -16,7 +16,34 @@ class Ability{
 
     }
 }
-
+class ArrowShoot extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.cooldown = 0.5;
+        this.currentcooldown = 0;
+    }
+    activate(x,y){
+        this.active = true;
+        let deltaX = (mouseX - x)/1;
+        let deltaY = (y - mouseY)/-1;
+        let dirVector = createVector(deltaX,deltaY);
+        dirVector.normalize();
+        dirVector.x *= 60;
+        dirVector.y *= 60;
+        this.arrow = new Arrow(x,y,dirVector,5);
+        this.arrow.decay();
+        this.currentcooldown = this.cooldown;
+        setTimeout(() => {
+            this.currentcooldown -= 0.5;
+            console.log("COOLDOWN IS BACK BABEY");
+        },500)
+    }
+    update(){
+        this.arrow.update();
+        this.active = this.arrow.active;
+    }
+}
 class FireBurst extends Ability{
     constructor(){
         super();
@@ -66,7 +93,7 @@ class HotStreak extends Ability{
         this.active = false;
         this.burn = true;
         this.duration = 2;
-        this.speed = 30;
+        this.speed = 40;
         this.toggle = true;
         this.direction;
 
@@ -80,7 +107,8 @@ class HotStreak extends Ability{
         else{
             this.direction = (mouseX > x) ? 1:-1;
             this.decay();
-            this.fires[this.fires.length] = new Fire(x,y,2,0.25); 
+            this.fires[this.fires.length] = new Fire(x,y,2,0.5); 
+            this.fires[this.fires.legth-1].decay();
         }
     } 
     update(x,y){
@@ -90,21 +118,20 @@ class HotStreak extends Ability{
             } else {
                 character.freeMove = true;
             }
-            if(random() > 0.7){
+            if(random() > 0.7 && this.duration > 1){
                 this.fires[this.fires.length] = new Fire(x,y,3,0.25); 
                 this.fires[this.fires.length-1].decay();
-            }
-            for(let i = 0; i < this.fires.length; i++){
-                this.fires[i].update();
-                if(!this.fires[i].alive){
-                    this.fires.splice(i,1);
-                }
             }
             if(this.fires.length == 0){
                 this.active = false;
             }
         }
-
+        for(let i = 0; i < this.fires.length; i++){
+            this.fires[i].update();
+            if(!this.fires[i].alive){
+                this.fires.splice(i,1);
+            }
+        }
     }
     decay(){
         setTimeout(() => {
@@ -114,10 +141,10 @@ class HotStreak extends Ability{
             } else {
                 this.active = false;
                 character.freeMove = true;
-                for(let i=0; i < this.fires.length;i++){
-                    this.fires[i].die();
-                }
-                this.fires.fireballs = [];
+                // for(let i=0; i < this.fires.length;i++){
+                //     this.fires[i].die();
+                // }
+                // this.fires.fireballs = [];
             }
         },250)
     } 
@@ -182,5 +209,56 @@ class FireTrap{
                 this.alive = false;
             }
         },250)        
+    }
+}
+class ShieldOfFire extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.toggle = true;
+        this.fireball; 
+        this.x;
+        this.y; 
+        this.dir = createVector(0,0);
+        this.size;
+        this.dmg = 1;
+    } 
+    activate(x,y,size){
+        this.x = x;
+        this.y = y;
+        this.active = !this.active;
+        this.size = size;
+        if(this.active){
+            this.fireball = new FireBall(this.x,this.y,this.dir,this.size.x/2,this.size,this.dmg);
+            this.doTheDamage();
+        } else {
+            this.disable();
+        }
+    }
+    update(){
+        if(this.active){
+            console.log("updating ability 4");
+            this.fireball.position.x = character.position.x;
+            this.fireball.position.y = character.position.y;
+            this.fireball.alpha = 200;
+            this.fireball.show();
+        } else { 
+            this.disable();
+        }
+    } 
+    disable(){
+        projectiles.splice(this.fireball,1);
+        this.active = false;
+    }
+    doTheDamage(){
+        setTimeout(() => {
+            projectiles.splice(this.fireball,1);
+            this.fireball = new FireBall(this.x,this.y,this.dir,this.size.x/2,this.size,this.dmg);
+            this.fireball.update();
+            if(this.active){
+                this.doTheDamage();
+            }
+        },100)
+
     }
 }

@@ -54,15 +54,17 @@ class Character{
         this.abilities = [];
         this.friction = 1;
 
+        this.weaponAnimationFrame = 0;
         this.hasWeapon = false;
         this.basicAnimation = [];
-        this.basicAnimationFrame = 0;
         this.basicAttacking = false;
         this.basicAttackFrameCount = 8;
         this.weaponPos = createVector(0,0);
+        this.weaponSpriteSize;
 
         this.attacksRecieved = [];
         this.bodyType;
+        this.weaponRotation;
     }
     applyStatusEffect(effect){
         if(effect != "basic" && effect != "none"){
@@ -278,8 +280,51 @@ class Character{
         this.forces = [];
     }
     getSendableData(){
-        let data = {x:this.position.x,opacity:this.opacity,y:this.position.y,name:this.name,sprite:this.spriteIndex,scale:scaleX};
+        let flipWeapon = (this.position.x > mouseX) ? true:false;
+        let data = {x:this.position.x,opacity:this.opacity,y:this.position.y,name:this.name,sprite:this.spriteIndex,scale:scaleX,
+        weaponSprite:this.weaponSprite,animationFrame:this.weaponAnimationFrame,weaponPosX:this.weaponPos.x,weaponPosY:this.weaponPos.y,
+        flipWeapon:flipWeapon,weaponRotation:this.weaponRotation,weaponSpriteSize:this.weaponSpriteSize};
         return data;
+    }
+    drawWeapon(animation){
+        // find the opposite, find the y to calculate the hypotenuse 
+        let deltaX = (mouseX - this.position.x);
+        let deltaY = ( this.position.y - mouseY);
+        let hypotenuse = Math.pow(Math.pow(deltaX,2) + Math.pow(deltaY,2),0.5);
+        let angleToCursor;
+        if(hypotenuse != 0){
+            angleToCursor = (this.position.y > mouseY) ? -asin(deltaX / hypotenuse)-180:asin(deltaX / hypotenuse);
+        }
+        push();
+        deltaX = constrain(deltaX,this.size.x/-2,this.size.x/2);
+        deltaY = constrain(deltaY,this.size.y/-4,this.size.x/4);
+        this.weaponPos = createVector(this.position.x+(deltaX),this.position.y+(deltaY*-1))
+        translate(this.weaponPos.x,this.weaponPos.y);
+        this.weaponRotation = 90-angleToCursor;
+        rotate(this.weaponRotation);
+        if(this.position.x > mouseX){
+            scale(1,-1);
+        }
+        image(animation[this.weaponAnimationFrame],0,0,this.weaponSpriteSize*scaleX*5,this.weaponSpriteSize*scaleY*5);
+        pop();
+    }
+    basicAttackHandle(){
+        if(this.basicAttacking){
+            if(frameCount % 2 == 0){
+                this.sendSquareAttack(this.weaponPos.x,this.weaponPos.y,5,this.weaponSpriteSize*scaleX*4,this.weaponSpriteSize*scaleY*5,"basic",attackId);
+                this.weaponAnimationFrame++;
+            }
+            if(this.weaponAnimationFrame == this.basicAttackFrameCount){
+                this.weaponAnimationFrame = 0;
+                this.basicAttacking = false;
+            }
+        }
+    }
+    drawName(){
+        textSize(35);
+        fill(255,255,255);
+        textAlign(CENTER, CENTER);
+        text(this.name,this.position.x,this.position.y-this.size.y/1.5);
     }
     // apply enemy status defect function or something 
     updatePosition(){
@@ -339,7 +384,6 @@ class Character{
         let scaledVelX = this.velocity.x * scaleX;
         let scaledVelY = this.velocity.y * scaleY;
         let finalVel = createVector(scaledVelX,scaledVelY);
-        console.log(finalVel);
         this.position.add(finalVel);
         this.constrainEdges();
     }
@@ -358,18 +402,49 @@ class Archer extends Character{
         this.sprite = characterSprites[this.spriteIndex];
         this.ghost = false;
         this.bodyType = "square";
+        this.weaponSprite = 1;
+        this.weaponSpriteSize = 32;
+        this.basicAttackFrameCount = 8;
+        this.basicAttacking = false;
+        this.basicAnimation = weaponSpritesAnimations[this.weaponSprite];
+        this.arrowShoot = new ArrowShoot();
+        this.multiShot;
+        this.grapple;
+        this.artimesBow;
     }
     show(){
-        textSize(35);
-        fill(255,255,255);
-        text(this.name,this.position.x,this.position.y-this.size.y/1.5);
-        textAlign(CENTER, CENTER);
+        this.drawName();
         tint(this.opacity,255);
         image(this.sprite,this.position.x,this.position.y,128*scaleX,128*scaleY);
+
+        this.drawWeapon(this.basicAnimation);
+        this.basicAttackHandle();
         tint(255,255);
+        this.updateAbilityOne();
     }
     sendCharacterData(){
         socket.emit("enemy-char-data",{percentHealth:(this.hp/this.maxHealth),room:roomId});
+    }
+    executeAbilityOne(){
+        if(!this.arrowShoot.active && this.arrowShoot.currentcooldown <= 0){
+            this.arrowShoot = new ArrowShoot();
+            this.arrowShoot.activate(this.position.x,this.position.y);
+            console.log("Executing Ability One");
+        } else {
+            console.log("Activation Failed");
+            if(this.arrowShoot.active){
+                console.log("already active");
+            }
+            if(this.arrowShoot.currentcooldown > 0){
+                console.log("on cooldown");
+            }
+        }
+    }
+    updateAbilityOne(){
+        if(this.arrowShoot.active){
+            this.arrowShoot.update();
+        } else {
+        }
     }
 }
 class Ember extends Character{
@@ -390,23 +465,21 @@ class Ember extends Character{
         this.hasWeapon = true;
         this.basicAttackFrameCount = 8;
         this.basicAttacking = false;
-        for(let i = 0; i < this.basicAttackFrameCount;i++){
-            let img = weaponSprites[this.weaponSprite].get(i*40,0,40,40);
-            this.basicAnimation.push(img);
-        }
+        this.weaponSpriteSize = 40;
+        this.basicAnimation = weaponSpritesAnimations[this.weaponSprite];
         this.bodyType = "square";
         this.maxFire = 100;
         this.executePassive();
         this.fireburst = new FireBurst();
         this.hotstreak = new HotStreak();
         this.firetrap = new FireTrap();
+        this.shieloffire = new ShieldOfFire();
         this.firetrapDuration = 7;
     }
     show(){
-        textSize(35);
-        fill(255,255,255);
-        textAlign(CENTER, CENTER);
-        text(this.name,this.position.x,this.position.y-this.size.y/1.5);
+        this.updateAbilityFour();
+        this.drawName();
+
         tint(this.opacity,255);
         fill(52);
         rect(this.position.x-this.size.x/2, this.position.y - this.size.x,this.maxFire,20);
@@ -414,35 +487,9 @@ class Ember extends Character{
         rect(this.position.x-this.size.x/2, this.position.y - this.size.x,this.fire,20);        
         image(this.sprite,this.position.x,this.position.y,128*scaleX,128*scaleY);
         tint(255,255);
-        // find the opposite, find the y to calculate the hypotenuse 
-        let deltaX = (mouseX - this.position.x);
-        let deltaY = ( this.position.y - mouseY);
-        let hypotenuse = Math.pow(Math.pow(deltaX,2) + Math.pow(deltaY,2),0.5);
-        let angleToCursor;
-        if(hypotenuse != 0){
-            angleToCursor = (this.position.y > mouseY) ? -asin(deltaX / hypotenuse)-180:asin(deltaX / hypotenuse);
-        }
-        push();
-        deltaX = constrain(deltaX,this.size.x/-2,this.size.x/2);
-        deltaY = constrain(deltaY,this.size.y/-4,this.size.x/4);
-        this.weaponPos = createVector(this.position.x+(deltaX),this.position.y+(deltaY*-1))
-        translate(this.weaponPos.x,this.weaponPos.y);
-        rotate(90-angleToCursor);
-        if(this.position.x > mouseX){
-            scale(1,-1);
-        }
-        image(this.basicAnimation[this.basicAnimationFrame],0,0,40*scaleX*5,40*scaleY*5);
-        pop();
-        if(this.basicAttacking){
-            if(frameCount % 2 == 0){
-                this.sendSquareAttack(this.weaponPos.x,this.weaponPos.y,5,40*scaleX*4,40*scaleY*5,"basic",attackId);
-                this.basicAnimationFrame++;
-            }
-            if(this.basicAnimationFrame == this.basicAttackFrameCount){
-                this.basicAnimationFrame = 0;
-                this.basicAttacking = false;
-            }
-        }
+
+        this.drawWeapon(this.basicAnimation);
+        this.basicAttackHandle();
 
         this.updateAbilityOne();
         this.updateAbilityTwo();
@@ -475,9 +522,9 @@ class Ember extends Character{
         }
     }
     updateAbilityTwo(){
-        if(this.hotstreak.active){
+       // if(this.hotstreak.active){
             this.hotstreak.update(this.position.x,this.position.y+this.size.y/2);
-        }
+       // }
     }
     executeAbilityThree(){
         if(!this.firetrap.active && this.fire > 40){
@@ -492,6 +539,24 @@ class Ember extends Character{
     updateAbilityThree(){
         if(this.firetrap.active){
             this.firetrap.update();
+        }
+    }
+    executeAbilityFour(){
+        if(this.fire > 5){
+            let sizeX = this.size.x * 3;
+            let sizeY = this.size.y * 3;
+            let totalSize = createVector(sizeX,sizeY);
+            this.shieloffire.activate(this.position.x,this.position.y,totalSize);
+        }
+    }
+    updateAbilityFour(){
+        if(this.fire > 5){
+            this.shieloffire.update();
+            if(this.shieloffire.active){
+                this.fire -= 0.5;
+            }
+        } else {
+            this.shieloffire.disable();
         }
     }
     executePassive(){
