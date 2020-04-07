@@ -84,6 +84,14 @@ class Arrow extends Projectile{
             this.velocity.add(this.acceleration);
             this.show();
             this.sendSquareAttack(this.attackId);
+            for(let i = 0; i < platforms.length; i++){
+                let collision = platforms[i].checkCollisionSquare(this.position.x,this.position.y,this.size,this.velocity.x);
+                if(collision.state){
+                    this.duration = 0;
+                    this.active = false;
+                    projectiles.splice(projectiles.indexOf(this));
+                }
+            }
         }
     }
     getSendableData(){

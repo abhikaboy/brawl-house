@@ -239,12 +239,16 @@ class Character{
     collisionHandle(platforms){
         for(let i = 0; i < platforms.length; i++){
             let platform = platforms[i];
-            let collision = platform.checkCollisionSquare(this.position.x,this.position.y,this.size.y,this.speed);
+            let collision = platform.checkCollisionSquare(this.position.x,this.position.y,this.size,this.speed);
             let res = collision.state;
             this.dirBlocked = "none";
             if(res){ // down is positive
                 switch(collision.direction){
                     case "bottom":
+                        this.dirBlocked = "only negative Y"
+                        this.jumpsLeft = this.maxJumps;
+                        break;
+                    case "within":
                         this.dirBlocked = "only negative Y"
                         this.jumpsLeft = this.maxJumps;
                         break;
@@ -286,6 +290,9 @@ class Character{
         flipWeapon:flipWeapon,weaponRotation:this.weaponRotation,weaponSpriteSize:this.weaponSpriteSize};
         return data;
     }
+    actualWeaponDraw(){
+        
+    }
     drawWeapon(animation){
         // find the opposite, find the y to calculate the hypotenuse 
         let deltaX = (mouseX - this.position.x);
@@ -305,7 +312,10 @@ class Character{
         if(this.position.x > mouseX){
             scale(1,-1);
         }
+        console.log(this.weaponAnimationFrame);
+        console.log(animation);
         image(animation[this.weaponAnimationFrame],0,0,this.weaponSpriteSize*scaleX*5,this.weaponSpriteSize*scaleY*5);
+        
         pop();
     }
     basicAttackHandle(){
@@ -407,17 +417,30 @@ class Archer extends Character{
         this.basicAttackFrameCount = 8;
         this.basicAttacking = false;
         this.basicAnimation = weaponSpritesAnimations[this.weaponSprite];
+        this.shootingAnimation = weaponSpritesAnimations[2];
         this.arrowShoot = new ArrowShoot();
-        this.multiShot;
+        this.multiShot = new MultiShoot();
         this.grapple;
         this.artimesBow;
+
+        this.shooting = false;
+        this.holdingGrapple = false;
     }
     show(){
         this.drawName();
         tint(this.opacity,255);
         image(this.sprite,this.position.x,this.position.y,128*scaleX,128*scaleY);
 
-        this.drawWeapon(this.basicAnimation);
+        if(!this.shooting && !this.holdingGrapple){
+            this.drawWeapon(this.basicAnimation);
+        } else if(this.shooting){
+            this.drawWeapon(this.shootingAnimation);
+        } else if(this.holdingGrapple){
+            this.weaponAnimationFrame = 0;
+            this.drawWeapon(this.basicAnimation);
+        }
+        console.log(this.weaponAnimationFrame);
+
         this.basicAttackHandle();
         tint(255,255);
         this.updateAbilityOne();
@@ -426,26 +449,40 @@ class Archer extends Character{
         socket.emit("enemy-char-data",{percentHealth:(this.hp/this.maxHealth),room:roomId});
     }
     executeAbilityOne(){
-        if(!this.arrowShoot.active && this.arrowShoot.currentcooldown <= 0){
-            this.arrowShoot = new ArrowShoot();
-            this.arrowShoot.activate(this.position.x,this.position.y);
-            console.log("Executing Ability One");
+        if(!this.arrowShoot.active && this.arrowShoot.currentcooldown <= 0 && !this.basicAttacking){
+            this.shooting = true;
+            this.arrowShoot.active = true;
         } else {
-            console.log("Activation Failed");
-            if(this.arrowShoot.active){
-                console.log("already active");
-            }
-            if(this.arrowShoot.currentcooldown > 0){
-                console.log("on cooldown");
-            }
         }
     }
     updateAbilityOne(){
         if(this.arrowShoot.active){
-            this.arrowShoot.update();
+            if(this.weaponAnimationFrame < 5 && this.shooting){
+                this.weaponAnimationFrame++;
+            } else if(this.weaponAnimationFrame == 5){
+                this.arrowShoot = new ArrowShoot();
+                this.arrowShoot.activate(this.position.x,this.position.y);
+                this.shooting = false;
+                this.weaponAnimationFrame = 0;
+            } else {
+                this.arrowShoot.update();
+                this.shooting = false;
+                if(!this.basicAttacking){
+                    this.weaponAnimationFrame = 0;
+                }
+            }
+        } else {
+            this.shooting = false;
+        }
+    }
+    executeAbilityOne(){
+        if(!this.arrowShoot.active && this.arrowShoot.currentcooldown <= 0 && !this.basicAttacking){
+            this.shooting = true;
+            this.arrowShoot.active = true;
         } else {
         }
     }
+
 }
 class Ember extends Character{
     constructor(){

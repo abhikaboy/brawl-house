@@ -20,16 +20,24 @@ function keyDownHandle(event) {
             character.moveleft = false;
             break
         case 49:
-            character.executeAbilityOne();
+            if(scene == "gameplay"){
+                character.executeAbilityOne();
+            }
             break;
         case 50:
-            character.executeAbilityTwo();
+            if(scene == "gameplay"){
+                character.executeAbilityTwo();
+            }
             break;
         case 51:
-            character.executeAbilityThree();
+            if(scene == "gameplay"){
+                character.executeAbilityThree();
+            }
             break;
         case 52:
-            character.executeAbilityFour();
+            if(scene == "gameplay"){
+                character.executeAbilityFour();
+            }
             break;
     }
 }

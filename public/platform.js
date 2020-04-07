@@ -15,19 +15,22 @@ class Platform{
         collision.set("none",false);
         // > means below < means above 
         // bottom is below the top, top is above the top
-        if(y+size/2 > this.t && y-size/2 <= this.t){ // if the bottom is below the top say we collide and above the bottom
-            if(x+size/2 > this.l && x-size/2 < this.r){
+        if(y+size.y/2 > this.t && y-size.y/2 <= this.t){ // if the bottom is below the top say we collide and above the bottom
+            if(x+size.x/2 > this.l && x-size.x/2 < this.r){
                 collision.set("bottom",true);
             }
-        } else if(y-size/2 < this.b && y+size/2 > this.b){ // if the top is above the bottom say we collide AND below the top 
-            if(x+size/2 > this.l && x-size/2 < this.r){
+        } else if(y-size.y/2 < this.b && y+size.y/2 > this.b){ // if the top is above the bottom say we collide AND below the top 
+            if(x+size.x/2 > this.l && x-size.x/2 < this.r){
                 collision.set("top",true);
             }
         } 
-        if(x+size/2 > this.l && x-size/2 < this.l-size+speed && y+size/2 > this.t && y-size/2 <= this.t){ // if the right is more right than the left say we collide
+        if(x+size.x/2 > this.l && x-size.x/2 < this.l-size.x+speed && y+size.y/2 > this.t && y-size.y/2 <= this.t){ // if the right is more right than the left say we collide
             collision.set("right",true);
-        } else if(x-size/2 < this.r && x+size/2 > this.r+size-speed && y+size/2 > this.t && y-size/2 <= this.t){
+        } else if(x-size.x/2 < this.r && x+size.x/2 > this.r+size.x-speed && y+size.y/2 > this.t && y-size.y/2 <= this.t){
             collision.set("left",true);
+        }
+        if(x > this.l && x < this.r && y > this.b && y < this.t){
+            collision.set("within",true);
         }
         return collision;
     }

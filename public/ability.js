@@ -44,6 +44,34 @@ class ArrowShoot extends Ability{
         this.active = this.arrow.active;
     }
 }
+class MultiShoot extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.cooldown = 0.5;
+        this.currentcooldown = 0;
+    }   
+    activate(x,y){
+        this.active = true;
+        let deltaX = (mouseX - x)/1;
+        let deltaY = (y - mouseY)/-1;
+        let dirVector = createVector(deltaX,deltaY);
+        dirVector.normalize();
+        dirVector.x *= 60;
+        dirVector.y *= 60;
+        this.arrow = new Arrow(x,y,dirVector,5);
+        this.arrow.decay();
+        this.currentcooldown = this.cooldown;
+        setTimeout(() => {
+            this.currentcooldown -= 0.5;
+            console.log("COOLDOWN IS BACK BABEY");
+        },500)
+    }
+    update(){
+        this.arrow.update();
+        this.active = this.arrow.active;
+    }
+}
 class FireBurst extends Ability{
     constructor(){
         super();

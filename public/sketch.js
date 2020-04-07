@@ -29,6 +29,9 @@ function preload(){
     for(let i=0; i<2;i++){
         weaponSprites.push(loadImage("/Web Assets/Character/Weapons/basic" +i+".png"));
     }
+    for(let i = 0; i < 1; i++){
+        weaponSprites.push(loadImage("/Web Assets/Character/Weapons/ability" +i+".png"));
+    }
     arrow = loadImage("/Web Assets/Character/Weapons/Archer Arrow.png");
     entitySprites = characterSprites; // for now
 }
@@ -61,6 +64,7 @@ function setup(){
         console.log(weaponSpritesAnimations[0]);
         for(let j = 0; j< frames; j++){
             let frameSize = (i == 0) ? 40:32; 
+            frames = (i == 2) ? 6:8;
             console.log(frameSize + " frame size");
             let img = weaponSprites[i].get(j*frameSize,0,frameSize,frameSize);
             weaponSpritesAnimations[i].push(img);
