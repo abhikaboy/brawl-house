@@ -29,9 +29,9 @@ class ArrowShoot extends Ability{
         let deltaY = (y - mouseY)/-1;
         let dirVector = createVector(deltaX,deltaY);
         dirVector.normalize();
-        dirVector.x *= 60;
-        dirVector.y *= 60;
-        this.arrow = new Arrow(x,y,dirVector,5);
+        dirVector.x *= 90;
+        dirVector.y *= 90;
+        this.arrow = new Arrow(x,y,dirVector,10);
         this.arrow.decay();
         this.currentcooldown = this.cooldown;
         setTimeout(() => {
@@ -44,34 +44,101 @@ class ArrowShoot extends Ability{
         this.active = this.arrow.active;
     }
 }
-class MultiShoot extends Ability{
+class MultiShot extends Ability{
     constructor(){
         super();
         this.active = false;
-        this.cooldown = 0.5;
+        this.cooldown = 5;
         this.currentcooldown = 0;
+        this.arrows = [];
     }   
     activate(x,y){
         this.active = true;
         let deltaX = (mouseX - x)/1;
         let deltaY = (y - mouseY)/-1;
-        let dirVector = createVector(deltaX,deltaY);
-        dirVector.normalize();
-        dirVector.x *= 60;
-        dirVector.y *= 60;
-        this.arrow = new Arrow(x,y,dirVector,5);
-        this.arrow.decay();
+        for(let i = 0; i < 3; i++){
+            let dirVector = createVector(deltaX,deltaY);
+            dirVector.normalize();
+            if(Math.abs(dirVector.y) > Math.abs(dirVector.x)){
+                dirVector.x *= 30+(i*80);
+                dirVector.y *= 40;
+            } else {
+                dirVector.x *= 60;
+                dirVector.y *= 10+(i*50);
+            }
+            this.arrows[this.arrows.length] = new Arrow(x,y,dirVector,10);
+            this.arrows[this.arrows.length-1].decay();
+        }
         this.currentcooldown = this.cooldown;
+        this.decay();
+
+    }
+    update(){
+        this.active = false;
+        for(let i = 0; i < this.arrows.length; i++){
+            this.arrows[i].update();
+            if(this.arrows[i].active){
+                this.active = true;
+            }
+        }
+    }
+    decay(){
         setTimeout(() => {
             this.currentcooldown -= 0.5;
             console.log("COOLDOWN IS BACK BABEY");
+            if(this.currentcooldown > 0){
+                this.decay();
+            }
         },500)
     }
+}
+class Grapple extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.attached = false;
+        this.cooldown = 5;
+        this.currentcooldown = 0;
+        this.duration = 2;
+        this.dir;
+        this.hook;
+    }
+    activate(x,y){
+        this.active = true;
+        let deltaX = (mouseX - x)/10;
+        let deltaY = (y - mouseY)/-10;
+        this.dir = createVector(deltaX,deltaY);
+        this.currentcooldown = this.cooldown;
+        this.dir.normalize();
+        this.hook = new GrappleHook(x,y,this.dir);
+    }
     update(){
-        this.arrow.update();
-        this.active = this.arrow.active;
+        this.hook.update();
+        this.attached = this.hook.attached;
+    }
+    getForce(){
+        return this.hook.getForce();
+    }
+    decay(){
+        setTimeout(() => {
+            this.currentcooldown -= 0.25;
+            this.duration -= 0.25;
+            if(this.duration <= 0){
+                this.active = false;
+                this.hook.kill();
+            } 
+            if(this.currentcooldown <= 0){
+              this.currentcooldown = 0;  
+            } else{
+                this.decay();
+            }
+        },250)
     }
 }
+class ArtemisBow extends Ability{
+    
+}
+
 class FireBurst extends Ability{
     constructor(){
         super();

@@ -13,6 +13,9 @@ let time;
 let timeLastFrame;
 let weaponSpritesAnimations = [];
 let arrow;
+let grapple;
+
+let damageMarkers = [];
 // have a 2d array, first layer is the sprite sheet the second is the frames
 let animationFrames = [8,]
 function preload(){
@@ -29,10 +32,12 @@ function preload(){
     for(let i=0; i<2;i++){
         weaponSprites.push(loadImage("/Web Assets/Character/Weapons/basic" +i+".png"));
     }
-    for(let i = 0; i < 1; i++){
+    for(let i = 0; i < 2; i++){
         weaponSprites.push(loadImage("/Web Assets/Character/Weapons/ability" +i+".png"));
     }
     arrow = loadImage("/Web Assets/Character/Weapons/Archer Arrow.png");
+    hook = loadImage("/Web Assets/Character/Weapons/Hook.png");
+    // grapple = loadImage("/Web Assets/Character/Weapons/Grapple.png")
     entitySprites = characterSprites; // for now
 }
 
@@ -63,8 +68,11 @@ function setup(){
         weaponSpritesAnimations[i] = [];
         console.log(weaponSpritesAnimations[0]);
         for(let j = 0; j< frames; j++){
-            let frameSize = (i == 0) ? 40:32; 
+            let frameSize = (i == 0) ? 200:160; 
             frames = (i == 2) ? 6:8;
+            if(i == 3){
+                frames = 1;
+            }
             console.log(frameSize + " frame size");
             let img = weaponSprites[i].get(j*frameSize,0,frameSize,frameSize);
             weaponSpritesAnimations[i].push(img);
@@ -151,7 +159,7 @@ function draw(){
                     scale(1,-1);
                 }
                 //let img = weaponSprites[enemyEntities[i].weaponSprite].get(enemyEntities[i].animationFrame,0,enemyEntities[i].weaponSpriteSize,enemyEntities[i].weaponSpriteSize);
-                image(weaponSpritesAnimations[enemyEntities[i].weaponSprite][enemyEntities[i].animationFrame],0,0,enemyEntities[i].weaponSpriteSize*scaleX*5,enemyEntities[i].weaponSpriteSize*scaleX*5);
+                image(weaponSpritesAnimations[enemyEntities[i].weaponSprite][enemyEntities[i].animationFrame],0,0,enemyEntities[i].weaponSpriteSize*scaleX,enemyEntities[i].weaponSpriteSize*scaleX);
                 pop();
             }
             for(let i = 0; i < enemyProjectiles.length; i++){
@@ -170,7 +178,19 @@ function draw(){
                         scale(-1,1);
                         image(arrow,0,0,enemyProjectiles[i].width*scaleFactorX,enemyProjectiles[i].height*scaleFactorX);
                         pop();
-                        // image(arrow,enemyProjectiles[i].x*scaleFactorX,enemyProjectiles[i].y*scaleFactorY,enemyProjectiles[i].width,enemyProjectiles[i].height);
+                        break;
+                    case "Grapple":
+                        push();
+                        translate(enemyProjectiles[i].x*scaleFactorX,enemyProjectiles[i].y*scaleFactorY);
+                        rotate(enemyProjectiles[i].rotation);
+                        scale(-1,1);
+                        image(hook,0,0,enemyProjectiles[i].width*scaleFactorX,enemyProjectiles[i].height*scaleFactorX);
+                        pop();
+                        stroke(255);
+                        strokeWeight(3);
+                        line(enemyProjectiles[i].charX*scaleFactorX,enemyProjectiles[i].charY*scaleFactorY,enemyProjectiles[i].x*scaleFactorX,enemyProjectiles[i].y*scaleFactorY);
+                        noStroke();
+                        break;
                 }
             }
             sendAllEntities();
@@ -185,8 +205,24 @@ function draw(){
             imageMode(CENTER);
 
             fill(255);
-            textSize(25);
-            text(getFrameRate(),500,100);    
+            textSize(30);
+            //text(getFrameRate(),500,100);   
+            
+            for(let i = 0; i < damageMarkers.length; i++){
+                let scaleFactorX = scaleX / damageMarkers[i].scaleX;
+                let scaleFactorY = scaleY / damageMarkers[i].scaleY;
+                if(damageMarkers[i].dmg > 3){
+                    fill(255,220,220,damageMarkers[i].alpha);
+                } else {
+                    fill(255,255,255,damageMarkers[i].alpha);
+                }
+                text(damageMarkers[i].dmg,damageMarkers[i].x*scaleFactorX,damageMarkers[i].y*scaleFactorY);
+                damageMarkers[i].y -= 2;
+                damageMarkers[i].alpha -= 10;
+                if(damageMarkers[i].alpha < 0){
+                    damageMarkers.splice(i,1);
+                }
+            }
             break;
     }
     particles.forEach(particleHandle);
@@ -266,4 +302,7 @@ socket.on("enemy-projectile-packet", (data) => {
     enemyProjectiles = data.projectiles;
     console.log(enemyProjectiles);
 })
-
+socket.on("damage-marker", (data) => {
+    data = data.data;
+    damageMarkers.push(data);
+})

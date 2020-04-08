@@ -52,7 +52,7 @@ class Arrow extends Projectile{
         this.position = createVector(x,y);
         this.castLocation = createVector(x,y);
         this.velocity = dir;
-        this.acceleration = createVector(0,1);
+        this.acceleration = createVector(0,0.8);
         this.name = "Arrow";
         attackId++;
         this.attackId = attackId;
@@ -150,7 +150,96 @@ class FireBall extends Projectile{
         return data;
     }
 }
-// projectiless
+class GrappleHook extends Projectile{
+    constructor(x,y,dir){
+        super();
+        this.attached = false;
+        this.position = createVector(x,y);
+        this.castLocation = createVector(x,y);
+        this.velocity = dir;
+        this.velocity.mult(40);
+        this.acceleration = createVector(0,0);
+        this.name = "Grapple";
+        this.attackId = 0;
+        this.dmg = 0;
+        this.size = createVector(64,64); // figure this out later
+        this.duration = 3;
+        this.rotation;
+        this.flip;
+        this.active = true;
+        this.spliced = false;
+    }
+    getSendableData(){
+        let data = {x:this.position.x, y:this.position.y,width:this.size.x,height:this.size.y,name:this.name,scaleX:scaleX,scaleY:scaleY
+            ,flip:this.flip,rotation:this.rotation,castX: this.castLocation.x,castY: this.castLocation.y,charX:character.position.x,charY:character.position.y};
+            return data;
+    }
+    show(){
+        let hypotenuse = Math.pow(Math.pow(this.velocity.x,2) + Math.pow(this.velocity.y,2),0.5);
+        let angle;
+        if(hypotenuse != 0){
+            angle = (this.position.y > this.castLocation.y) ? -asin(this.velocity.x / hypotenuse)-180:asin(this.velocity.x / hypotenuse);
+        }
+        this.rotation = 90+angle;
+        push();
+        translate(this.position.x,this.position.y);
+        rotate(this.rotation);
+        scale(-1,1);
+        image(hook,0,0,this.size.x*scaleX,this.size.y*scaleY);
+        pop();
+        stroke(255);
+        strokeWeight(3);
+        line(character.position.x,character.position.y,this.position.x,this.position.y);
+        noStroke();
+    }
+    update(){
+        if(this.active){
+            this.position.add(this.velocity);
+            this.velocity.add(this.acceleration);
+            this.show();
+            for(let i = 0; i < platforms.length; i++){
+                let collision = platforms[i].checkCollisionSquare(this.position.x,this.position.y,this.size,this.velocity.x);
+                if(collision.state){
+                    this.latch();
+                }
+            }
+        }
+        else{
+            this.kill();
+        }
+    }
+    kill(){
+        if(!this.spliced){
+            projectiles.splice(projectiles.indexOf(this),1);
+            this.splice = true;
+        }
+    }
+    latch(){
+        this.velocity = createVector(0,0);
+        this.acceleration = createVector(0,0);
+        this.attached = true; 
+    }
+    getForce(){
+        let deltaX = this.castLocation.x - this.position.x;
+        let deltaY = this.castLocation.y - this.position.y;
+        let forceVector = createVector(-deltaX,-deltaY);
+        forceVector.normalize();
+        forceVector.mult(4);
+        forceVector.y *= 0.8;
+        console.log(forceVector);
+        return forceVector;
+    }
+    decay(){
+        setTimeout(()=>{
+            this.duration -= 0.25;
+            if(this.duration <= 0){
+                this.active = false;
+            } else {
+                this.decay();
+            }
+        },250)
+    }
+}
 class Fire{
     constructor(x,y,duration,dmg){
         this.position = createVector(x,y);

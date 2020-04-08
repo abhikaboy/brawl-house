@@ -65,6 +65,7 @@ class Character{
         this.attacksRecieved = [];
         this.bodyType;
         this.weaponRotation;
+        this.grappling = false;
     }
     applyStatusEffect(effect){
         if(effect != "basic" && effect != "none"){
@@ -81,6 +82,7 @@ class Character{
     takeDamage(dmg){
         if(!this.dodging){
             this.hp -= dmg;
+            socket.emit("damage-marker",{x:this.position.x+random(-this.size.x,this.size.x),y:this.position.y+random(-this.size.y,0),dmg:dmg,room:roomId,scaleX:scaleX,scaleY:scaleY,alpha:255});
         }
     }
     processSquareAttack(x,y,dmg,enemyScaleX,enemyScaleY,sizeX,sizeY,type,atckId){
@@ -114,7 +116,6 @@ class Character{
         }
     }
     sendSquareAttack(x,y,dmg,sizeX,sizeY,type,attackId){
-        console.log("sending a square attack")
         socket.emit("new-square-attack",{x:x,y:y,dmg:dmg,scaleX:scaleX,scaleY:scaleY,sizeX:sizeX,sizeY:sizeY,type:type,room:roomId,attackId:attackId});
     }
     sendCircleAttack(radius,dmg,x,y,type,atkId){
@@ -187,14 +188,16 @@ class Character{
         }
     }
     jump(){
-        if(this.jumpsLeft > 0){
+        if(this.jumpsLeft > 0 && !this.grappling){
             this.velocity.y = this.jumpPower;
             this.jumpsLeft--;
         }
     }
     dodge(){
-        this.dodging = true;
-        this.stillDodging = true;
+        if(!this.grappling){
+            this.dodging = true;
+            this.stillDodging = true;
+        }
     }
     checkPlatformCollisions(platform){
         let collided = platform.checkCollisionSquare();
@@ -312,16 +315,14 @@ class Character{
         if(this.position.x > mouseX){
             scale(1,-1);
         }
-        console.log(this.weaponAnimationFrame);
-        console.log(animation);
-        image(animation[this.weaponAnimationFrame],0,0,this.weaponSpriteSize*scaleX*5,this.weaponSpriteSize*scaleY*5);
+        image(animation[this.weaponAnimationFrame],0,0,this.weaponSpriteSize*scaleX,this.weaponSpriteSize*scaleY);
         
         pop();
     }
     basicAttackHandle(){
         if(this.basicAttacking){
             if(frameCount % 2 == 0){
-                this.sendSquareAttack(this.weaponPos.x,this.weaponPos.y,5,this.weaponSpriteSize*scaleX*4,this.weaponSpriteSize*scaleY*5,"basic",attackId);
+                this.sendSquareAttack(this.weaponPos.x,this.weaponPos.y,5,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"basic",attackId);
                 this.weaponAnimationFrame++;
             }
             if(this.weaponAnimationFrame == this.basicAttackFrameCount){
@@ -336,10 +337,14 @@ class Character{
         textAlign(CENTER, CENTER);
         text(this.name,this.position.x,this.position.y-this.size.y/1.5);
     }
+    grappleHandle(){
+
+    }
     // apply enemy status defect function or something 
     updatePosition(){
         this.netForce.x = 0;
         this.netForce.y = 0;
+        this.grappleHandle();
         this.applyFriction();
         for(let i = 0; i < this.forces.length; i++){
             this.netForce.add(this.forces[i]);
@@ -413,37 +418,64 @@ class Archer extends Character{
         this.ghost = false;
         this.bodyType = "square";
         this.weaponSprite = 1;
-        this.weaponSpriteSize = 32;
+        this.weaponSpriteSize = 160;
         this.basicAttackFrameCount = 8;
         this.basicAttacking = false;
         this.basicAnimation = weaponSpritesAnimations[this.weaponSprite];
         this.shootingAnimation = weaponSpritesAnimations[2];
+        this.grappleSprite = weaponSpritesAnimations[3];
         this.arrowShoot = new ArrowShoot();
-        this.multiShot = new MultiShoot();
-        this.grapple;
+        this.multiShot = new MultiShot();
+        this.grapple = new Grapple();
         this.artimesBow;
 
         this.shooting = false;
+        this.multishooting = false;
         this.holdingGrapple = false;
+        this.hookLastAttached = false;
+    }
+    basicAttack(){
+        if(this.basicAttacking == false && this.shooting == false && this.weaponAnimationFrame < 3 && this.multishooting == false){
+            this.basicAttacking = true;
+            attackId++;
+        }
+    }
+    getSendableData(){
+        let flipWeapon = (this.position.x > mouseX) ? true:false;
+        let weaponNow;
+        if(this.shooting || this.multishooting){
+            weaponNow = 2; 
+        } else if(this.holdingGrapple){
+            weaponNow = 3;
+        } else {
+            weaponNow = this.weaponSprite;
+        }
+        let data = {x:this.position.x,opacity:this.opacity,y:this.position.y,name:this.name,sprite:this.spriteIndex,scale:scaleX,
+        weaponSprite:weaponNow,animationFrame:this.weaponAnimationFrame,weaponPosX:this.weaponPos.x,weaponPosY:this.weaponPos.y,
+        flipWeapon:flipWeapon,weaponRotation:this.weaponRotation,weaponSpriteSize:this.weaponSpriteSize};
+        return data;
     }
     show(){
         this.drawName();
         tint(this.opacity,255);
         image(this.sprite,this.position.x,this.position.y,128*scaleX,128*scaleY);
 
-        if(!this.shooting && !this.holdingGrapple){
+        if(!this.shooting && !this.holdingGrapple && !this.multishooting){
             this.drawWeapon(this.basicAnimation);
-        } else if(this.shooting){
+        } else if(this.shooting || this.multishooting){
             this.drawWeapon(this.shootingAnimation);
         } else if(this.holdingGrapple){
             this.weaponAnimationFrame = 0;
-            this.drawWeapon(this.basicAnimation);
+            this.drawWeapon(this.grappleSprite);
         }
-        console.log(this.weaponAnimationFrame);
 
         this.basicAttackHandle();
         tint(255,255);
         this.updateAbilityOne();
+        this.updateAbilityTwo();
+        this.updateAbilityThree();
+        fill(255);
+        text(this.grapple.active,this.position.x,this.position.y);
     }
     sendCharacterData(){
         socket.emit("enemy-char-data",{percentHealth:(this.hp/this.maxHealth),room:roomId});
@@ -452,37 +484,88 @@ class Archer extends Character{
         if(!this.arrowShoot.active && this.arrowShoot.currentcooldown <= 0 && !this.basicAttacking){
             this.shooting = true;
             this.arrowShoot.active = true;
+            this.weaponAnimationFrame = 0;
         } else {
         }
     }
     updateAbilityOne(){
         if(this.arrowShoot.active){
-            if(this.weaponAnimationFrame < 5 && this.shooting){
+            if(this.weaponAnimationFrame < 5 && this.shooting && frameCount % 3 == 0){
                 this.weaponAnimationFrame++;
-            } else if(this.weaponAnimationFrame == 5){
+                this.shooting = true;
+            } else if(this.weaponAnimationFrame == 5 && this.shooting){
                 this.arrowShoot = new ArrowShoot();
                 this.arrowShoot.activate(this.position.x,this.position.y);
                 this.shooting = false;
                 this.weaponAnimationFrame = 0;
-            } else {
+            } else if(this.shooting == false){
                 this.arrowShoot.update();
-                this.shooting = false;
-                if(!this.basicAttacking){
-                    this.weaponAnimationFrame = 0;
-                }
             }
         } else {
-            this.shooting = false;
+            //this.shooting = false;
         }
     }
-    executeAbilityOne(){
-        if(!this.arrowShoot.active && this.arrowShoot.currentcooldown <= 0 && !this.basicAttacking){
-            this.shooting = true;
-            this.arrowShoot.active = true;
+    executeAbilityTwo(){
+        if(!this.multiShot.active && this.multiShot.currentcooldown <= 0 && !this.basicAttacking){
+            this.multishooting = true;
+            this.multiShot.active = true;
+            this.weaponAnimationFrame = 0;
+        }
+    }
+    updateAbilityTwo(){
+        if(this.multiShot.active){
+            if(this.weaponAnimationFrame < 5 && this.multishooting && frameCount % 3 == 0){
+                this.weaponAnimationFrame++;
+                this.multishooting = true;
+            } else if(this.weaponAnimationFrame == 5 && this.multishooting){
+                this.multiShot = new MultiShot();
+                this.multiShot.activate(this.position.x,this.position.y);
+                this.multishooting = false;
+            } else if(this.multishooting == false){
+                this.multiShot.update();
+                this.multishooting = false;
+                this.weaponAnimationFrame = 0;
+            }
         } else {
+            //this.shooting = false;
         }
     }
-
+    executeAbilityThree(){
+        if(!this.grapple.active && this.grapple.currentcooldown <= 0 && !this.basicAttacking){
+            this.holdingGrapple = true;
+            this.grapple = new Grapple();
+            this.grapple.active = true;
+            this.weaponAnimationFrame = 0;
+            this.grapple.activate(this.position.x,this.position.y);
+            this.grapple.decay();
+        }
+    }
+    // do force for a certain amout of time 
+    updateAbilityThree(){
+        if(this.grapple.active){
+            this.grapple.update();
+        }
+    }
+    grappleHandle(){
+        if(this.grappling){
+            this.applyForce(this.grapple.getForce());
+            console.log("APPLYING FORCE");
+        }
+        if(!this.hookLastAttached && this.grapple.attached){
+            console.log("LATCHED");
+            this.grappling = true;
+            setTimeout(() => {
+                this.grappling = false;
+                this.holdingGrapple = false;
+                this.grapple.active = false;
+            },300)
+        }
+        if(!this.grapple.active){
+            this.grappling = false;
+            this.holdingGrapple = false;
+        }
+        this.hookLastAttached = this.grapple.attached;
+    }
 }
 class Ember extends Character{
     constructor(){
@@ -502,7 +585,7 @@ class Ember extends Character{
         this.hasWeapon = true;
         this.basicAttackFrameCount = 8;
         this.basicAttacking = false;
-        this.weaponSpriteSize = 40;
+        this.weaponSpriteSize = 200;
         this.basicAnimation = weaponSpritesAnimations[this.weaponSprite];
         this.bodyType = "square";
         this.maxFire = 100;
@@ -571,7 +654,6 @@ class Ember extends Character{
         } else if(this.firetrap.active && !this.firetrap.activated && this.firetrap.duration < this.firetrapDuration-1){
             this.firetrap.activate();
         } 
-        console.log(this.firetrap.active);
     }
     updateAbilityThree(){
         if(this.firetrap.active){
@@ -601,7 +683,7 @@ class Ember extends Character{
             this.fire++;
             this.fire = constrain(this.fire,0,this.maxFire);
             this.executePassive();
-        },375)
+        },200)
     }
 
 }

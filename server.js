@@ -58,7 +58,7 @@ io.sockets.on('connection', (socket) => {
     socket.on('leave-waiting',(data) => {
         socket.leave('waiting room');
         let joinRoom = "" + data.roomId;
-        socket.join(joinRoom);
+        socket.join(joinRoom); 
     })
     socket.on("ready-to-play",(data) => {
         socket.to(data.room).emit('enemy-ready-to-play',{room:data.room});
@@ -82,6 +82,9 @@ io.sockets.on('connection', (socket) => {
     })
     socket.on('enemy-projectiles',(data) => {
         socket.to(data.room).emit("enemy-projectile-packet",{data:data});
+    })
+    socket.on("damage-marker",(data) => {
+        io.in(data.room).emit('damage-marker', {data:data});
     })
 })
 
