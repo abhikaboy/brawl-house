@@ -11,15 +11,25 @@
     </head>
     <body>
         <div id = "menu">
-            <h1 class = "title">Brawl House</h1>
-            <h2 class = "mainButton" id = "play">PLAY</h2  >
-            <h2 class = "mainButton" id = "login">LOGIN</h2 class = "mainButton" >
-            <h2 class = "mainButton" id = "register">REGISTER</h2 class = "mainButton" >
-            <video autoplay loop muted class = "videoBackground">
-                <source src ="/Web Assets/red sword background.mp4" type="video/mp4"> </source>
+            <div class = "buttons">
+                <h2 class = "mainButton" id = "play">Play</h2  >
+                <h2 class = "mainButton" id = "login">About</h2 class = "mainButton" >
+                <h2 class = "mainButton" id = "register">Characters</h2 class = "mainButton" >
+            </div>
+            <video autoplay muted class = "videoBackground" id = "landing">
+                <source src ="/Web Assets/Landing Animation.mp4" type="video/mp4"> </source>
             </video>
         </div>
+        <video autoplay loop muted class = "videoBackground" id = "waiting">
+            <source src ="/Web Assets/Loading.mp4" type="video/mp4"> </source>
+        </video>
         <div id = "charSelect">
+            <p> </p>
+        </div>
+        <div id = "theyCharSelect">
+            <p> </p>
+        </div>
+        <div id = "myCharSelect">
             <p> </p>
         </div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>

@@ -1,6 +1,7 @@
 let character; 
 let characterSprites = [];
-let characterNames = ["Archer","Ember","Necromancer","Shadow","Yassuo"];
+let characterNames = ["Archer","Ember","Shadow","Necromancer","Valor"];
+let graves = [];
 let entities = [];
 let isCharacterSelected = false;
 let attackId = 0;
@@ -66,6 +67,20 @@ class Character{
         this.bodyType;
         this.weaponRotation;
         this.grappling = false;
+        this.lastPlatformHit;
+        this.lookingForLastPlatform = false;
+
+        this.dead = false;
+        this.graveDropChance = 1;
+    }
+    die(){
+        entities.splice(entities.indexOf(this),1);
+        if(this.name == "Skeleton"){
+            if(random() < this.graveDropChance){
+                graves[graves.length] = new Grave(this.position.x,this.position.y,this.name);
+                entities.push(graves[graves.length -1]);
+            }
+        }
     }
     applyStatusEffect(effect){
         if(effect != "basic" && effect != "none"){
@@ -73,17 +88,24 @@ class Character{
         }
     }
     basicAttack(){
-        console.log("doing the basic attack!");
+        //"doing the basic attack!");
         if(this.basicAttacking == false){
             this.basicAttacking = true;
             attackId++;
         }
     }
+
     takeDamage(dmg){
-        if(!this.dodging){
+        if(!this.stillDodging){
             this.hp -= dmg;
             socket.emit("damage-marker",{x:this.position.x+random(-this.size.x,this.size.x),y:this.position.y+random(-this.size.y,0),dmg:dmg,room:roomId,scaleX:scaleX,scaleY:scaleY,alpha:255});
+        } else{
+            console.log("DODGED!!!!!");
         }
+    }
+    heal(amount){
+        this.hp += amount;
+        consol.log("HEALING");
     }
     processSquareAttack(x,y,dmg,enemyScaleX,enemyScaleY,sizeX,sizeY,type,atckId){
         let scaleFactorX = scaleX/enemyScaleX;
@@ -93,8 +115,14 @@ class Character{
             let result = this.detectAttackRecievedSqaure(x,y,scaleFactorX,scaleFactorY,sizeX,sizeY);
             if(result){
                 this.takeDamage(dmg);
-                console.log("HIT");
-                this.applyStatusEffect(type);
+                //"HIT");
+                if(type == "Lifesteal"){
+                    socket.emit("enemy-heal",{amount:dmg/2,room:roomId});
+                } else if(type == "Bat Lifesteal"){
+                    socket.emit("bat-heal",{amount:dmg/2,room:roomId});
+                } else {
+                    this.applyStatusEffect(type);
+                }
                 this.attacksRecieved.push(atckId);
             }
         }
@@ -105,7 +133,7 @@ class Character{
         let scaleFactorY = scaleY/enemyScaleY;
         // push attack id into attacks recieved
         if(this.attacksRecieved.includes(atckID)){
-            console.log("we already got this attack!");
+            //"we already got this attack!");
         } else {
             let result = this.detectAttackRecievedCircle(x,y,scaleFactorX,scaleFactorY,radius);
             if(result){
@@ -220,8 +248,6 @@ class Character{
         this.power = this.basepower + stats[2]; 
         this.resistance = this.baseresistance + stats[3]; 
     }
-    // potential collision system. Find out the angle of the particle the the center of the player. 
-    // do trig to say "okay at this angle you have to be at least ___ distance." If you in that distance then like do da damage
     sendDamagePacket(dmg,type){
         socket.emit("damagePacket",{damage:dmg,type:type})
     }
@@ -246,6 +272,9 @@ class Character{
             let res = collision.state;
             this.dirBlocked = "none";
             if(res){ // down is positive
+                if(platform.name != "Floor" && collision.direction != "bottom" && this.lookingForLastPlatform){
+                    this.lastPlatformHit = platform;
+                }
                 switch(collision.direction){
                     case "bottom":
                         this.dirBlocked = "only negative Y"
@@ -278,7 +307,7 @@ class Character{
         if(this.moveright){
             this.velocity.x = this.speed;
         } else if (this.moveleft){
-            this.velocity.x = this.speed*-1
+            this.velocity.x = this.speed*-1;
         } else {
             //this.velocity.x = 0;
         }
@@ -340,6 +369,9 @@ class Character{
     grappleHandle(){
 
     }
+    characterVelocityChange(){
+
+    }
     // apply enemy status defect function or something 
     updatePosition(){
         this.netForce.x = 0;
@@ -364,6 +396,7 @@ class Character{
             this.freeMove = false;
             this.opacity = 200;
         }
+        this.characterVelocityChange();
         this.velocity.add(this.acceleration);
         if(this.stillDodging && this.velocity.x > -1 && this.velocity.x < 1){
             this.stillDodging = false;
@@ -401,13 +434,16 @@ class Character{
         let finalVel = createVector(scaledVelX,scaledVelY);
         this.position.add(finalVel);
         this.constrainEdges();
+        if(this.dead){
+            this.die();
+        }
     }
 }
 class Archer extends Character{
     constructor(){
         super();
         this.name = "Archer";
-        this.buttonIndex = 0;
+        this.buttonIndex = 2;
         this.mass = .75; 
         this.basehp = 100; //100
         this.basespeed = 10;
@@ -422,20 +458,22 @@ class Archer extends Character{
         this.basicAttackFrameCount = 8;
         this.basicAttacking = false;
         this.basicAnimation = weaponSpritesAnimations[this.weaponSprite];
-        this.shootingAnimation = weaponSpritesAnimations[2];
-        this.grappleSprite = weaponSpritesAnimations[3];
+        this.shootingAnimation = weaponSpritesAnimations[basicAttacks];
+        this.grappleSprite = weaponSpritesAnimations[basicAttacks+1];
+        this.artemisbowSprite = weaponSpritesAnimations[basicAttacks+2];
         this.arrowShoot = new ArrowShoot();
         this.multiShot = new MultiShot();
         this.grapple = new Grapple();
-        this.artimesBow;
+        this.artimesBow = new ArtemisBow();
 
         this.shooting = false;
         this.multishooting = false;
         this.holdingGrapple = false;
         this.hookLastAttached = false;
+        this.holdingArtemisBow = false;
     }
     basicAttack(){
-        if(this.basicAttacking == false && this.shooting == false && this.weaponAnimationFrame < 3 && this.multishooting == false){
+        if(!this.basicAttacking && !this.shooting && this.weaponAnimationFrame < 3 && !this.multishooting && !this.holdingArtemisBow){
             this.basicAttacking = true;
             attackId++;
         }
@@ -444,9 +482,11 @@ class Archer extends Character{
         let flipWeapon = (this.position.x > mouseX) ? true:false;
         let weaponNow;
         if(this.shooting || this.multishooting){
-            weaponNow = 2; 
+            weaponNow = basicAttacks; 
         } else if(this.holdingGrapple){
-            weaponNow = 3;
+            weaponNow = basicAttacks+1;
+        } else if (this.holdingArtemisBow){
+            weaponNow = basicAttacks+2;
         } else {
             weaponNow = this.weaponSprite;
         }
@@ -460,13 +500,16 @@ class Archer extends Character{
         tint(this.opacity,255);
         image(this.sprite,this.position.x,this.position.y,128*scaleX,128*scaleY);
 
-        if(!this.shooting && !this.holdingGrapple && !this.multishooting){
+        if(!this.shooting && !this.holdingGrapple && !this.multishooting && !this.holdingArtemisBow){
             this.drawWeapon(this.basicAnimation);
         } else if(this.shooting || this.multishooting){
             this.drawWeapon(this.shootingAnimation);
         } else if(this.holdingGrapple){
             this.weaponAnimationFrame = 0;
             this.drawWeapon(this.grappleSprite);
+        } else if(this.holdingArtemisBow){
+            this.weaponAnimationFrame = 0;
+            this.drawWeapon(this.artemisbowSprite);
         }
 
         this.basicAttackHandle();
@@ -474,8 +517,7 @@ class Archer extends Character{
         this.updateAbilityOne();
         this.updateAbilityTwo();
         this.updateAbilityThree();
-        fill(255);
-        text(this.grapple.active,this.position.x,this.position.y);
+        this.updateAbilityFour();
     }
     sendCharacterData(){
         socket.emit("enemy-char-data",{percentHealth:(this.hp/this.maxHealth),room:roomId});
@@ -546,13 +588,34 @@ class Archer extends Character{
             this.grapple.update();
         }
     }
+    executeAbilityFour(){
+        if(!this.artimesBow.active && this.artimesBow.currentcooldown <= 0 && !this.basicAttacking && !this.holdingGrapple){
+            this.holdingArtemisBow = true;
+            this.artimesBow = new ArtemisBow();
+            this.artimesBow.active = true;
+            this.weaponAnimationFrame = 0;
+            this.artimesBow.activate();
+            this.artimesBow.decay();
+        } else if(this.artimesBow.active && this.artimesBow.duration > 0){
+            this.artimesBow.shoot(this.position.x,this.position.y);
+        }
+    }
+    updateAbilityFour(){
+        if(this.artimesBow.active){
+            this.artimesBow.update();
+        } 
+        if(this.artimesBow.duration <= 0){
+            this.artimesBow.active = false;
+            this.holdingArtemisBow = false;
+        }
+    }
     grappleHandle(){
         if(this.grappling){
             this.applyForce(this.grapple.getForce());
-            console.log("APPLYING FORCE");
+            //"APPLYING FORCE");
         }
         if(!this.hookLastAttached && this.grapple.attached){
-            console.log("LATCHED");
+            //"LATCHED");
             this.grappling = true;
             setTimeout(() => {
                 this.grappling = false;
@@ -571,7 +634,7 @@ class Ember extends Character{
     constructor(){
         super();
         this.name = "Ember";
-        this.buttonIndex = 2;
+        this.buttonIndex = 0;
         this.fire = 0;
         this.mass = 1; 
         this.basehp = 125;
@@ -686,4 +749,827 @@ class Ember extends Character{
         },200)
     }
 
+}
+class Necromancer extends Character{
+    constructor(){
+        super();
+        this.name = "Necromancer";
+        this.buttonIndex = 1;
+        this.mass = .75; 
+        this.basehp = 100; //100
+        this.basespeed = 7;
+        this.basepower = 10; 
+        this.baseresistance = 2; 
+        this.spriteIndex = 2;
+        this.sprite = characterSprites[this.spriteIndex];
+        this.ghost = false;
+        this.bodyType = "square";
+        this.weaponSprite = 2;
+        this.weaponSpriteSize = 160;
+        this.basicAttackFrameCount = 8;
+        this.basicAttacking = false;
+        this.basicAnimation = weaponSpritesAnimations[this.weaponSprite];
+
+        this.summonSkeleAnimation = weaponSpritesAnimations[basicAttacks+3];
+        this.reviveGravesAnimation = weaponSpritesAnimations[basicAttacks+4];
+        this.impulseAnimation = weaponSpritesAnimations[basicAttacks+5];
+        this.summonBatsAnimation = weaponSpritesAnimations[basicAttacks+6];
+
+        this.skeletonSummon = new SkeletonSummon();
+        this.graveRevival = new GraveRevival();
+        this.impulse = new Impulse();
+        this.summonBats = new VampireSwarm();
+
+        this.currentAnimation = 0;
+    }
+    getSendableData(){
+        let flipWeapon = (this.position.x > mouseX) ? true:false;
+        let weaponNow = this.weaponSprite;
+        let data = {x:this.position.x,opacity:this.opacity,y:this.position.y,name:this.name,sprite:this.spriteIndex,scale:scaleX,
+        weaponSprite:weaponNow,animationFrame:this.weaponAnimationFrame,weaponPosX:this.weaponPos.x,weaponPosY:this.weaponPos.y,
+        flipWeapon:flipWeapon,weaponRotation:this.weaponRotation,weaponSpriteSize:this.weaponSpriteSize};
+        return data;
+    }
+    show(){
+        this.drawName();
+        tint(this.opacity,255);
+        image(this.sprite,this.position.x,this.position.y,128*scaleX,128*scaleY);
+
+        if(this.currentAnimation == 0){
+            this.drawWeapon(this.basicAnimation);
+        } else{
+            switch(this.currentAnimation){
+                case 1:
+                    this.drawWeapon(this.summonSkeleAnimation);
+                    break;
+                case 2:
+                    this.drawWeapon(this.reviveGravesAnimation);
+                    break;
+                case 3:
+                    this.drawWeapon(this.impulseAnimation);
+                    break;
+                case 4:
+                    this.drawWeapon(this.summonBatsAnimation);
+                    break;
+            }
+            if(frameCount % 2 == 0 ){
+                this.weaponAnimationFrame++;
+            }
+            if(this.weaponAnimationFrame == 7){
+                this.currentAnimation = 0;
+                this.weaponAnimationFrame = 0;
+            }
+        }
+
+        this.basicAttackHandle();
+        this.updateAbilityThree();
+        tint(255,255);
+    }
+    sendCharacterData(){
+        socket.emit("enemy-char-data",{percentHealth:(this.hp/this.maxHealth),room:roomId});
+    }
+    executeAbilityOne(){
+        if(this.skeletonSummon.currentcooldown <= 0 && !this.basicAttacking){
+            this.currentAnimation = 1;
+            this.skeletonSummon.active = true;
+            this.skeletonSummon.activate(mouseX,mouseY);
+        }
+    }
+    executeAbilityTwo(){
+        if(this.graveRevival.currentcooldown <= 0 && !this.basicAttacking){
+            this.currentAnimation = 2;
+            this.graveRevival.active = true;
+            this.graveRevival.activate();
+        }  
+    }
+    executeAbilityThree(){
+        if(this.impulse.currentcooldown <= 0 && !this.basicAttacking){
+            this.currentAnimation = 3;
+            this.impulse.active = true;
+            this.impulse.activate(this.position.x,this.position.y,createVector(this.size.x*5,this.size.y*5));
+        }  
+    }
+    updateAbilityThree(){
+        if(this.impulse.active){
+            this.impulse.update();
+        }
+    }
+    executeAbilityFour(){
+        if(this.summonBats.currentcooldown <= 0 && !this.basicAttacking){
+            this.currentAnimation = 4;
+            this.summonBats.active = true;
+            this.summonBats.activate();
+        }  
+    }
+}
+class Skeleton extends Character{
+    constructor(x,y){
+        super();
+        this.position = createVector(x,y);
+        this.name = "Skeleton";
+        this.mass = .75; 
+        this.hp = 15; //100
+        this.maxHealth = 15;
+        this.speed = 16;
+        this.power = 5; 
+        this.resistance = 0; 
+        this.spriteIndex = 5;
+        this.animationIndex = 5;
+        this.sprite = entitySpritesAnimations[this.animationIndex][0];
+        this.ghost = false;
+        this.bodyType = "square";
+        this.weaponSpriteSize = 160;
+        this.basicAttackFrameCount = 8;
+        this.basicAttacking = false;
+        this.basicAnimation = entitySpritesAnimations[this.animationIndex + 1];
+        this.walkingAnimation = entitySpritesAnimations[this.animationIndex];
+        this.currentFrame = 0;
+        this.alive = true;
+        this.opacity = 255;
+        this.freeMove = true;
+        this.jumpDelay = 300;
+        this.canJump = true;
+        this.jumpsLeft = 2;
+        this.grappling = false;
+        this.jumpPower = -22;
+        this.friction = 3;
+        this.damage = 2;
+
+        this.airborne = false;
+
+        this.lockedOnX;
+        this.lockedOnY;
+
+        this.relocatingUp = false;
+        this.relocatingDown = false;
+        this.lookingForLastPlatform = true;
+
+        this.rightOverride = false;
+        this.leftOverride = false;
+
+        this.currentInstruction = "none";
+    }
+    withinRange(value,target,tolerance){
+        if(value > target - tolerance && value < target + tolerance){
+            return true;
+        } else {
+            return false;
+        }
+    }
+    basicAttack(){
+        //"doing the basic attack!");
+        if(this.basicAttacking == false){
+            this.currentFrame = 0;
+            this.basicAttacking = true;
+            attackId++;
+        }
+    }
+    basicAttackHandle(){
+        if(this.basicAttacking){
+            if(frameCount % 2 == 0){
+                this.sendSquareAttack(this.position.x,this.position.y,this.damage,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"basic",attackId);
+                this.currentFrame++;
+            }
+            if(this.currentFrame == this.basicAttackFrameCount){
+                this.currentFrame = 0;
+                this.basicAttacking = false;
+            }
+        }
+    }
+    setJumpDelay(){
+        setTimeout(() => {
+            this.canJump = true;
+        },this.jumpDelay);
+    }
+    goToEnemy(){
+        let enemy = enemyEntities[0];
+        let toTheLeft = (this.position.x < enemy.x) ? true:false; 
+        let withinX = this.withinRange(this.position.x,enemy.x,50);
+        if(toTheLeft){
+            this.moveright = true;
+            this.moveleft = false;
+            //"moving right");
+        } else if(withinX){
+            this.moveright = false;
+            this.moveleft = false;
+            //"Within X");
+        } else {
+            this.moveright = false;
+            this.moveleft = true;
+            //"moving left");
+        }
+    }
+    pathfind(){
+        let enemyLevel;
+        let currentLevel;
+        let enemy = enemyEntities[0];
+
+        let toTheLeft = (this.position.x < enemy.x) ? true:false; 
+        let withinX = this.withinRange(this.position.x,enemy.x,50);
+
+        if(enemy.y > middleBottom){
+            enemyLevel = "Bottom";
+        } else if(enemy.y > upperBottom){
+            enemyLevel = "Middle";
+        } else {
+            enemyLevel = "Top";
+        }
+        if(this.position.y > middleBottom){
+            currentLevel = "Bottom";
+        } else if(this.position.y > upperBottom){
+            currentLevel = "Middle";
+        } else {
+            currentLevel = "Top";
+        }
+        if(currentLevel  == enemyLevel && enemyLevel == "Bottom"){
+            this.goToEnemy();
+        } else if(enemyLevel == "Bottom"){
+            if(currentLevel == "Top"){
+                if(this.position.x > screen.width/2){
+                    this.moveright = true;
+                    this.moveleft = false;
+                } else {
+                    this.moveleft = true;
+                    this.moveright = false;
+                }
+            } else {
+                let platformMiddle  = 0.58125*screen.width;
+                if(this.position.x > screen.width/2){
+                    let platformWidth = (0.4125*screen.width) - (0.1*screen.width)
+                    if(this.position.x < 0.58125*screen.width+  platformWidth/2){
+                        this.moveleft = true;
+                        this.moveright = false
+                    } else {
+                        this.moveleft = false;
+                        this.moveright = true;
+                    }
+                    // on right platform
+                } else {
+                    // on left platform 
+                    let platformWidth = (0.4125*screen.width) - (0.1*screen.width);
+                    if(this.position.x < 0.1*screen.width+  platformWidth/2){
+                        this.moveleft = true;
+                        this.moveright = false
+                    } else {
+                        this.moveleft = false;
+                        this.moveright = true;
+                    }
+                }
+            }
+        }
+        if(currentLevel == enemyLevel && enemyLevel == "Middle"){
+            // if both of us are on the left or right platform just like go to them.
+            // else travel to the other 
+            this.goToEnemy();
+            if(this.position.x > 0.4125*screen.width && this.position.x < 0.58125*screen.width && this.canJump){
+                this.jump();
+                this.canJump = false;
+                this.setJumpDelay();
+            }
+        } else if(enemyLevel == "Middle"){
+            // bottom and we have to get up
+            // top and we have to get down
+            if(currentLevel == "Top"){
+                if(enemy.x > screen.width/2){
+                    this.moveleft = false;
+                    this.moveright = true;
+                } else {
+                    this.moveleft = true;
+                    this.moveright = false;
+                }
+            }
+            if(currentLevel == "Bottom"){
+                // find closest jumping spot
+                //let numbers = [4, 2, 5, 1, 3];
+                //numbers.sort((a, b) => a - b);
+                this.getToMiddle();
+            }
+        }
+        if(currentLevel == enemyLevel && enemyLevel == "Top"){
+            this.goToEnemy();
+        } else if(enemyLevel == "Top"){
+            if(currentLevel == "Bottom"){
+                this.getToMiddle();
+            } else { // we're in the middle
+
+                let platformWidth = (0.4125*screen.width) - (0.1*screen.width);
+                let platformMiddle;
+                if(this.position.x > screen.width/2){ // we're on the right
+                    platformMiddle = (0.58125*screen.width)+(platformWidth/2);
+                    //platformMiddle + " on the right ");
+                } else{ // we're on the left
+                    platformMiddle = (0.1*screen.width)+(platformWidth/2);
+                    //platformMiddle + " on the left ");
+                }
+                this.goToXLocation(platformMiddle);
+                if(this.withinRange(this.position.x,platformMiddle,50)){
+                    this.jump();
+                    this.canJump = false;
+                    this.setJumpDelay();
+                }
+
+            }
+        }
+    }
+    getToMiddle(){
+        let middleMove = (this.position.x > screen.width/2) ? true:false
+        let dists = [{name:"Middle", value:dist(screen.width/2,0,this.position.x,0), moveLeft:middleMove},
+        {name: "Left", value: dist(0,0,this.position.x,0), moveLeft: true},
+        {name: "Right", value: dist(screen.width,0,this.position.x,0), moveLeft: false}];
+        dists.sort((a,b) => { return a.value-b.value});
+        let closestPosition = dists[0];
+        //dists);
+        //closestPosition.name);
+        this.moveleft = closestPosition.moveLeft;
+        this.moveright = !this.moveleft;
+        if(this.withinRange(closestPosition.value,0,200*scaleX)){
+            this.jump();
+            this.canJump = false;
+            this.setJumpDelay();
+        }
+    }
+    goToXLocation(point){
+        //"going to an x location");
+        if(this.position.x > point){
+            this.moveleft = true;
+            this.moveright = false;
+        } else{
+            this.moveright = true;
+            this.moveleft = false;
+        }
+    }
+    show(){
+        this.basicAttackHandle();
+        this.airborne = (this.dirBlocked == "none") ? true:false;
+        this.drawName();
+        tint(this.opacity,255);
+        if(this.basicAttacking){
+            //this.currentFrame);
+            image(this.basicAnimation[this.currentFrame],this.position.x,this.position.y,160*scaleX,160*scaleY);
+        } else {
+            //"doin da walk")
+            image(this.walkingAnimation[this.currentFrame],this.position.x,this.position.y,160*scaleX,160*scaleY);
+        }
+        //);
+        tint(255,255);
+        if(this.hp <= 0){
+            this.dead = true;
+        }
+        if(frameCount % 3 == 0 && !this.basicAttacking){
+            this.currentFrame++;
+        }
+        if(this.currentFrame == 10){
+            this.currentFrame = 0;
+        }
+        this.pathfind();
+        //dist(this.position.x,this.position.y,enemyEntities[0].x,enemyEntities[0].y));
+        if(dist(this.position.x,this.position.y,enemyEntities[0].x,enemyEntities[0].y) < 200){
+            this.basicAttack();
+        }
+    }
+    getSendableData(){
+        let animation = this.animationIndex;
+        if(this.basicAttacking){
+            animation += 1;
+        }
+        let data = {
+            x:this.position.x,
+            opacity:this.opacity,
+            y:this.position.y,
+            name:this.name,
+            animationIndex:animation,
+            scale:scaleX,
+            animationFrame:this.currentFrame
+    };
+        return data;
+    }
+}
+class VampireBat extends Character{
+    constructor(x,y){
+        super();
+        this.position = createVector(x,y);
+        this.name = "Vampire Bat";
+        this.mass = .75; 
+        this.hp = 10; //100
+        this.maxHealth = 15;
+        this.speed = 16;
+        this.power = 5; 
+        this.resistance = 0; 
+        this.spriteIndex = 5;
+        this.animationIndex = 8;
+        this.sprite = entitySpritesAnimations[this.animationIndex][0];
+        this.ghost = false;
+        this.bodyType = "square";
+        this.weaponSpriteSize = 160;
+        this.basicAttackFrameCount = 8;
+        this.basicAttacking = false;
+        this.walkingAnimation = entitySpritesAnimations[this.animationIndex];
+        this.currentFrame = 0;
+        this.alive = true;
+        this.opacity = 255;
+        this.freeMove = true;
+
+        this.jumpDelay = 300;
+        this.canJump = true;
+        this.jumpsLeft = 2;
+        this.grappling = false;
+        this.jumpPower = -22;
+        this.friction = 3;
+        this.damage = 2;
+
+        this.airborne = false;
+        this.attackFrame = 0;
+    }
+    withinRange(value,target,tolerance){
+        if(value > target - tolerance && value < target + tolerance){
+            return true;
+        } else {
+            return false;
+        }
+    }
+    basicAttack(){
+        //"doing the basic attack!");
+        if(this.basicAttacking == false){
+            //this.currentFrame = 0;
+            this.basicAttacking = true;
+            attackId++;
+        }
+    }
+    basicAttackHandle(){
+        if(this.basicAttacking){
+            if(frameCount % 2 == 0){
+                this.sendSquareAttack(this.position.x,this.position.y-50,this.damage,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"Bat Lifesteal",attackId);
+                this.attackFrame++;
+            }
+            if(this.attackFrame == this.basicAttackFrameCount){
+                this.attackFrame = 0;
+                this.basicAttacking = false;
+            }
+        }
+    }
+    setJumpDelay(){
+        setTimeout(() => {
+            this.canJump = true;
+        },this.jumpDelay);
+    }
+    setJumpDelay(){
+        setTimeout(() => {
+            this.canJump = true;
+        },this.jumpDelay);
+    }
+    goToEnemy(){
+        let enemy = enemyEntities[0];
+        let toTheLeft = (this.position.x < enemy.x) ? true:false; 
+        let withinX = this.withinRange(this.position.x,enemy.x,50);
+        if(toTheLeft){
+            this.moveright = true;
+            this.moveleft = false;
+            //"moving right");
+        } else if(withinX){
+            this.moveright = false;
+            this.moveleft = false;
+            //"Within X");
+        } else {
+            this.moveright = false;
+            this.moveleft = true;
+            //"moving left");
+        }
+    }
+    pathfind(){
+        let enemyLevel;
+        let currentLevel;
+        let enemy = enemyEntities[0];
+
+        let toTheLeft = (this.position.x < enemy.x) ? true:false; 
+        let withinX = this.withinRange(this.position.x,enemy.x,50);
+
+        if(enemy.y > middleBottom){
+            enemyLevel = "Bottom";
+        } else if(enemy.y > upperBottom){
+            enemyLevel = "Middle";
+        } else {
+            enemyLevel = "Top";
+        }
+        if(this.position.y > middleBottom){
+            currentLevel = "Bottom";
+        } else if(this.position.y > upperBottom){
+            currentLevel = "Middle";
+        } else {
+            currentLevel = "Top";
+        }
+        if(currentLevel  == enemyLevel && enemyLevel == "Bottom"){
+            this.goToEnemy();
+        } else if(enemyLevel == "Bottom"){
+            if(currentLevel == "Top"){
+                if(this.position.x > screen.width/2){
+                    this.moveright = true;
+                    this.moveleft = false;
+                } else {
+                    this.moveleft = true;
+                    this.moveright = false;
+                }
+            } else {
+                let platformMiddle  = 0.58125*screen.width;
+                if(this.position.x > screen.width/2){
+                    let platformWidth = (0.4125*screen.width) - (0.1*screen.width)
+                    if(this.position.x < 0.58125*screen.width+  platformWidth/2){
+                        this.moveleft = true;
+                        this.moveright = false
+                    } else {
+                        this.moveleft = false;
+                        this.moveright = true;
+                    }
+                    // on right platform
+                } else {
+                    // on left platform 
+                    let platformWidth = (0.4125*screen.width) - (0.1*screen.width);
+                    if(this.position.x < 0.1*screen.width+  platformWidth/2){
+                        this.moveleft = true;
+                        this.moveright = false
+                    } else {
+                        this.moveleft = false;
+                        this.moveright = true;
+                    }
+                }
+            }
+        }
+        if(currentLevel == enemyLevel && enemyLevel == "Middle"){
+            // if both of us are on the left or right platform just like go to them.
+            // else travel to the other 
+            this.goToEnemy();
+            if(this.position.x > 0.4125*screen.width && this.position.x < 0.58125*screen.width && this.canJump){
+                this.jump();
+                this.canJump = false;
+                this.setJumpDelay();
+            }
+        } else if(enemyLevel == "Middle"){
+            // bottom and we have to get up
+            // top and we have to get down
+            if(currentLevel == "Top"){
+                if(enemy.x > screen.width/2){
+                    this.moveleft = false;
+                    this.moveright = true;
+                } else {
+                    this.moveleft = true;
+                    this.moveright = false;
+                }
+            }
+            if(currentLevel == "Bottom"){
+                // find closest jumping spot
+                //let numbers = [4, 2, 5, 1, 3];
+                //numbers.sort((a, b) => a - b);
+                this.getToMiddle();
+            }
+        }
+        if(currentLevel == enemyLevel && enemyLevel == "Top"){
+            this.goToEnemy();
+        } else if(enemyLevel == "Top"){
+            if(currentLevel == "Bottom"){
+                this.getToMiddle();
+            } else { // we're in the middle
+
+                let platformWidth = (0.4125*screen.width) - (0.1*screen.width);
+                let platformMiddle;
+                if(this.position.x > screen.width/2){ // we're on the right
+                    platformMiddle = (0.58125*screen.width)+(platformWidth/2);
+                    //platformMiddle + " on the right ");
+                } else{ // we're on the left
+                    platformMiddle = (0.1*screen.width)+(platformWidth/2);
+                    //platformMiddle + " on the left ");
+                }
+                this.goToXLocation(platformMiddle);
+                if(this.withinRange(this.position.x,platformMiddle,50)){
+                    this.jump();
+                    this.canJump = false;
+                    this.setJumpDelay();
+                }
+
+            }
+        }
+    }
+    getToMiddle(){
+        let middleMove = (this.position.x > screen.width/2) ? true:false
+        let dists = [{name:"Middle", value:dist(screen.width/2,0,this.position.x,0), moveLeft:middleMove},
+        {name: "Left", value: dist(0,0,this.position.x,0), moveLeft: true},
+        {name: "Right", value: dist(screen.width,0,this.position.x,0), moveLeft: false}];
+        dists.sort((a,b) => { return a.value-b.value});
+        let closestPosition = dists[0];
+        //dists);
+        //closestPosition.name);
+        this.moveleft = closestPosition.moveLeft;
+        this.moveright = !this.moveleft;
+        if(this.withinRange(closestPosition.value,0,200*scaleX)){
+            this.jump();
+            this.canJump = false;
+            this.setJumpDelay();
+        }
+    }
+    goToXLocation(point){
+        //"going to an x location");
+        if(this.position.x > point){
+            this.moveleft = true;
+            this.moveright = false;
+        } else{
+            this.moveright = true;
+            this.moveleft = false;
+        }
+    }
+    show(){
+        this.basicAttackHandle();
+        this.airborne = (this.dirBlocked == "none") ? true:false;
+        this.drawName();
+        tint(this.opacity,255);
+        //"doin da walk")
+        image(this.walkingAnimation[this.currentFrame],this.position.x,this.position.y-50,160*scaleX,160*scaleY);
+        //);
+        tint(255,255);
+        if(this.hp <= 0){
+            this.dead = true;
+        }
+        if(frameCount % 3 == 0){
+            this.currentFrame++;
+        }
+        if(this.currentFrame == 5){
+            this.currentFrame = 0;
+        }
+        this.pathfind();
+        if(dist(this.position.x,this.position.y,enemyEntities[0].x,enemyEntities[0].y) < 200){
+            this.basicAttack();
+        }
+        this.applyForce(createVector(0,-0.1));
+    }
+    getSendableData(){
+        let animation = this.animationIndex;
+        let data = {
+            x:this.position.x,
+            opacity:this.opacity,
+            y:this.position.y,
+            name:this.name,
+            animationIndex:animation,
+            scale:scaleX,
+            animationFrame:this.currentFrame
+    };
+        return data;
+    }
+}
+class Valor extends Character{
+    constructor(){
+        super();
+        this.name = "Valor";
+        this.buttonIndex = 1;
+        this.mass = .75; 
+        this.basehp = 80; //100
+        this.basespeed = 7;
+        this.basepower = 10; 
+        this.baseresistance = 5; 
+        this.spriteIndex = 4;
+        this.sprite = characterSprites[this.spriteIndex];
+        this.ghost = false;
+        this.bodyType = "square";
+        this.weaponSprite = 3;
+        this.weaponSpriteSize = 160;
+        this.basicAttackFrameCount = 8;
+        this.basicAttacking = false;
+        this.basicAnimation = weaponSpritesAnimations[this.weaponSprite];
+        this.windAttack;
+        this.currentAttack = 0;
+        this.slashDash = new SlashDash();
+        this.slam = new Slam();
+    }
+    show(){
+        this.drawName();
+
+        tint(this.opacity,255);
+        image(this.sprite,this.position.x,this.position.y,128*scaleX,128*scaleY);
+        tint(255,255);
+
+        this.drawWeapon(this.basicAnimation);
+        this.basicAttackHandle();
+
+        this.updateAbilityOne();
+        this.updateAbilityTwo();
+        // this.updateAbilityThree();
+    }
+    sendCharacterData(){
+        let health = this.hp/this.maxHealth
+        socket.emit("enemy-char-data",{percentHealth: health,room:roomId});
+    }
+    basicAttack(){
+        if(this.basicAttacking == false){
+            this.basicAttacking = true;
+            attackId++;
+            this.currentAttack = attackId;
+            console.log("Basic Attack ID " + attackId);
+            let deltaX = (mouseX - this.position.x)/1;
+            let deltaY = (this.position.y - mouseY)/-1;
+            let dirVector = createVector(deltaX,deltaY);
+            dirVector.normalize();
+            dirVector.mult(40);
+            this.windAttack = new WindAttack(this.position.x,this.position.y,dirVector,3);
+        }
+    }
+    characterVelocityChange(){
+        console.log(this.slashDash.dashing);
+        if(this.slashDash.dashing){
+            this.velocity = this.slashDash.getVelocity();
+            console.log("character change velocity thing, dashing");
+        }
+        if(this.slam.slamming){
+            this.velocity = this.slam.getVelocity();
+            this.slam.reachedBottom = (this.dirBlocked == "only negative Y") ? true:false;
+        }
+    }
+    basicAttackHandle(){
+        if(this.basicAttacking){
+            if(frameCount % 2 == 0){
+                this.sendSquareAttack(this.weaponPos.x,this.weaponPos.y,5,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"basic",this.currentAttack);
+                this.weaponAnimationFrame = (random()>0.5) ? this.weaponAnimationFrame+1:this.weaponAnimationFrame+2;
+            }
+            if(this.weaponAnimationFrame >= this.basicAttackFrameCount){
+                this.weaponAnimationFrame = 0;
+                this.basicAttacking = false;
+            }
+            this.windAttack.update();
+        }
+    }
+    executeAbilityOne(){
+            if(!this.slashDash.active && this.slashDash.currentcooldown <= 0){
+                this.slashDash = new SlashDash();
+            }
+            if(!this.slashDash.isDone){
+                this.slashDash.activate(this.position.x,this.position.y);
+            }
+    }
+    updateAbilityOne(){
+        this.slashDash.update();    
+    }
+    executeAbilityTwo(){
+        if(!this.slam.active && this.slam.currentcooldown <= 0){
+            this.slam = new Slam();
+            this.slam.activate();
+        }
+    }
+    updateAbilityTwo(){
+        if(this.slam.active){
+            this.slam.update();
+        }
+    }
+}
+class Shadow extends Character{
+
+}
+class Grave extends Character{
+    constructor(x,y,entity){
+        super();
+        this.position = createVector(x,y);
+        this.name = "Grave";
+        this.mass = .75; 
+        this.hp = 15; //100
+        this.maxHealth = 15;
+        this.speed = 16;
+        this.power = 5; 
+        this.resistance = 0; 
+        this.spriteIndex = 5;
+        this.animationIndex = 7;
+        this.sprite = entitySpritesAnimations[this.animationIndex][0];
+        this.ghost = false;
+        this.bodyType = "square";
+        this.weaponSpriteSize = 160;
+        this.basicAttackFrameCount = 8;
+        this.basicAttacking = false;
+        this.walkingAnimation = entitySpritesAnimations[this.animationIndex];
+        this.currentFrame = 0;
+        this.alive = true;
+        this.opacity = 255;
+        this.freeMove = true;
+        this.jumpDelay = 300;
+        this.canJump = true;
+        this.jumpsLeft = 2;
+        this.grappling = false;
+        this.jumpPower = -22;
+        this.friction = 3;
+
+        this.airborne = false;
+
+        this.entity = entity;
+    }
+    processSquareAttack(x,y,dmg,enemyScaleX,enemyScaleY,sizeX,sizeY,type,atckId){
+    }
+    takeDamage(){
+        //"lol u thought");
+    }
+    show(){
+        image(this.sprite,this.position.x,this.position.y,160*scaleX,160*scaleY);
+    }
+    getSendableData(){
+        let animation = this.animationIndex;
+        let data = {
+            x:this.position.x,
+            opacity:this.opacity,
+            y:this.position.y,
+            name:this.name,
+            scale:scaleX
+    };
+        return data;
+    }
 }

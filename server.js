@@ -86,6 +86,12 @@ io.sockets.on('connection', (socket) => {
     socket.on("damage-marker",(data) => {
         io.in(data.room).emit('damage-marker', {data:data});
     })
+    socket.on("enemy-heal", (data) => {
+        socket.to(data.room).emit('heal', {data:data});
+    })
+    socket.on("bat-heal", (data) => {
+        socket.to(data.room).emit('bat-heal',{data:data});
+    })
 })
 
 console.log("we running");

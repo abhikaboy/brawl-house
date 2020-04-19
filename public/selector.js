@@ -39,15 +39,30 @@ let selectHandleNoParticle = function(button){
             if(lastHover != index){
                 socket.emit("new-character-selected",{index:index,room:roomId});
             }
-            tint(255, 127);
-            image(characterSelected[index],-12,605,1072*scaleX,314*scaleY);
-            tint(255,255);
+            //tint(255, 127);
+            //image(characterSelected[index],-12,605,1072*scaleX,314*scaleY);
+            
+            let menu = document.getElementById("myCharSelect");
+            menu.style.backgroundImage =  "url('Web Assets/Character Selected/char" + index + ".png')" 
+            menu.style.width = screen.width + "px";
+            menu.style.height = screen.height + "px";
+            menu.style.backgroundSize = "100% 100%";
+            console.log("changing the background url");
+            console.log(menu.style.backgroundImage);
+            menu.style.display = "block";
+            //menu.style.opacity = "0.5";
+            //tint(255,255);
             lastHover = index;
         }
     });
+    if(!selectedAnItem){
+        let menu = document.getElementById("myCharSelect");
+        menu.style.display = "none";
+    }
 }
 let selectHandleLocked = function(){
-    image(characterSelected[character.buttonIndex],-12,605,1072*scaleX,314*scaleY);  
+    let menu = document.getElementById("myCharSelect");
+    menu.style.display = "none";
     particles[particles.length] = new Particle(random(0,800*scaleX),screen.height,"up-left");
     loadEnemySelector();
 }

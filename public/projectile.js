@@ -15,6 +15,7 @@ class Projectile{
         this.animation;
         this.animationFrame = 0;
         this.animationFrameCount = 8; 
+        this.pushBack = false;
         
         projectiles.push(this);
 
@@ -25,9 +26,12 @@ class Projectile{
     }
     sendSquareAttack(attackId){
         console.log("sending a square attack");
-        if(random() > 0.5){
+        if(random() > 0.2 && this.name == "Fireball"){
             socket.emit("new-square-attack",{x:this.position.x,y:this.position.y,dmg:this.dmg,scaleX:scaleX, scaleY:scaleY,
                 sizeX:this.size.x,sizeY:this.size.y,type:this.statusEffect,room:roomId,attackId:attackId});
+        } else {
+            socket.emit("new-square-attack",{x:this.position.x,y:this.position.y,dmg:this.dmg,scaleX:scaleX, scaleY:scaleY,
+                sizeX:this.size.x,sizeY:this.size.y,type:this.statusEffect,room:roomId,attackId:attackId});           
         }
     }
     sendCircleAttack(attackId){
@@ -110,6 +114,15 @@ class Arrow extends Projectile{
             }
         },100)
     }
+}
+class ArtemisArrow extends Arrow{
+    update(){
+        if(this.active){
+            this.position.add(this.velocity);
+            this.show();
+            this.sendSquareAttack(this.attackId);
+        }
+    }    
 }
 class FireBall extends Projectile{
     constructor(x,y,dir,radius,size,dmg){
@@ -224,8 +237,8 @@ class GrappleHook extends Projectile{
         let deltaY = this.castLocation.y - this.position.y;
         let forceVector = createVector(-deltaX,-deltaY);
         forceVector.normalize();
-        forceVector.mult(4);
-        forceVector.y *= 0.8;
+        forceVector.mult(5);
+        forceVector.y *= 0.9;
         console.log(forceVector);
         return forceVector;
     }
@@ -238,6 +251,152 @@ class GrappleHook extends Projectile{
                 this.decay();
             }
         },250)
+    }
+}
+class LifeSteal extends Projectile{
+    constructor(x,y,radius,size,dmg){
+        super();
+        this.position = createVector(x,y);
+        this.velocity = createVector(0,0);
+        this.acceleration = createVector(0,0); 
+        this.size = size;
+        this.name;
+        this.radius = radius;
+        this.acceleration = createVector(0,0); 
+        this.statusEffect = "Lifesteal";
+        this.name = "Lifesteal";
+        attackId++;
+        this.attackId = attackId;
+        this.alpha = 255;
+        this.dmg = dmg;
+        this.r = random(20);
+        this.g = random(255);
+        this.b = random(0,100);
+    }
+    show(){
+        fill(this.r,this.g,this.b,this.alpha);
+        ellipse(this.position.x,this.position.y,this.radius*2,this.radius*2);
+        this.radius *= 0.96;
+        this.alpha -= 10;
+    }
+    update(){
+        //this.updatePosition();
+        this.position.x = character.position.x;
+        this.position.y = character.position.y;
+        this.show();
+        this.sendSquareAttack(this.attackId);
+    }
+    finished(){
+        return (this.alpha <= 10);
+    }
+    getSendableData(){
+        let data = {r:this.r,g:this.g,b:this.b,alpha:this.alpha,x:this.position.x,
+            y:this.position.y,radius:this.radius,name:this.name,scaleX:scaleX,scaleY:scaleY};
+        return data;
+    }
+}
+class WindAttack extends Projectile{
+    constructor(x,y,dir,dmg){
+        super();
+        this.position = createVector(x,y);
+        this.castLocation = createVector(x,y);
+        this.velocity = dir;
+        this.name = "WindSlice";
+        attackId++;
+        this.attackId = attackId;
+        console.log("Wind Attack ID " + this.attackId);
+        this.dmg = dmg;
+        this.size = createVector(160,160);
+        this.duration = 1;
+        this.active;
+        this.rotation;
+        this.flip;
+        this.active = true;
+    }    
+    show(){
+        let hypotenuse = Math.pow(Math.pow(this.velocity.x,2) + Math.pow(this.velocity.y,2),0.5);
+        let angle;
+        if(hypotenuse != 0){
+            angle = (this.position.y > this.castLocation.y) ? -asin(this.velocity.x / hypotenuse)-180:asin(this.velocity.x / hypotenuse);
+        }
+        this.rotation = 90+angle;
+        push();
+        translate(this.position.x,this.position.y);
+        rotate(this.rotation);
+        scale(-1,1);
+        image(windSlice,0,0,this.size.x*scaleX,this.size.y*scaleY);
+        pop();
+    }
+    update(){
+        if(this.active){
+            this.sendSquareAttack(this.attackId);
+            this.position.add(this.velocity);
+            this.velocity.add(this.acceleration);
+            this.show();
+            let fakesizeX = this.size.x/4;
+            let fakesizeY = this.size.y/4;
+            let fakeSize = createVector(fakesizeX,fakesizeY);
+            for(let i = 0; i < platforms.length; i++){
+                let collision = platforms[i].checkCollisionSquare(this.position.x,this.position.y,fakeSize,this.velocity.x);
+                if(collision.state){
+                    this.duration = 0;
+                    this.active = false;
+                    projectiles.splice(projectiles.indexOf(this));
+                }
+            }
+        }
+    }
+    getSendableData(){
+        let data = {x:this.position.x, y:this.position.y,width:this.size.x,height:this.size.y,name:this.name,scaleX:scaleX,scaleY:scaleY
+        ,flip:this.flip,rotation:this.rotation,castX: this.castLocation.x,castY: this.castLocation.y};
+        return data;
+    }
+    decay(){
+        setTimeout(() => {
+            this.duration -= 0.1;
+            if(this.duration <= 0){
+                this.active = false;
+                projectiles.splice(projectiles.indexOf(this));
+            } else {
+                this.decay();
+            }
+        },100)
+    }
+}
+class InvisbleAttack extends Projectile{
+    constructor(dmg){
+        super();
+        this.position = character.position;
+        this.castLocation;
+        this.velocity;
+        this.name = "Invisible";
+        attackId++;
+        this.attackId = attackId;
+        this.dmg = dmg;
+        this.size = createVector(128*scaleX,128*scaleX);
+        this.duration = 1;
+        this.active;
+        this.rotation;
+        this.flip;
+        this.active = true;
+    }    
+    show(){
+        //shouldn't happen
+    }
+    getSendableData(){
+        let data = {x:this.position.x, y:this.position.y,width:this.size.x,height:this.size.y,name:this.name,scaleX:scaleX,scaleY:scaleY
+        ,flip:this.flip,rotation:this.rotation};
+        return data;
+    }
+    die(){
+        this.active = false;
+        projectiles.splice(projectiles.indexOf(this));
+    }
+    update(){
+        if(this.active){
+            this.position = character.position;
+            this.sendSquareAttack(this.attackId);
+        }
     }
 }
 class Fire{

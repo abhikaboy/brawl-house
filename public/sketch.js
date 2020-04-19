@@ -12,12 +12,13 @@ let deltaTime;
 let time;
 let timeLastFrame;
 let weaponSpritesAnimations = [];
+let entitySpritesAnimations = [];
 let arrow;
 let grapple;
 
 let damageMarkers = [];
 // have a 2d array, first layer is the sprite sheet the second is the frames
-let animationFrames = [8,]
+let animationFrames = [8]
 function preload(){
     selectScreen = loadImage("/Web Assets/Character Selection/Character Selection Screen.jpg");
     statScreen = loadImage("/Web Assets/Character Selection/Stat Pick.jpg");
@@ -29,23 +30,25 @@ function preload(){
     for(let i=0; i< 5;i++){
         characterSprites.push(loadImage("/Web Assets/Character/" + characterNames[i] + ".png"));
     }
-    for(let i=0; i<2;i++){
+    for(let i=0; i<4;i++){
         weaponSprites.push(loadImage("/Web Assets/Character/Weapons/basic" +i+".png"));
     }
-    for(let i = 0; i < 2; i++){
+    for(let i = 0; i < 7; i++){
         weaponSprites.push(loadImage("/Web Assets/Character/Weapons/ability" +i+".png"));
     }
+
     arrow = loadImage("/Web Assets/Character/Weapons/Archer Arrow.png");
     hook = loadImage("/Web Assets/Character/Weapons/Hook.png");
+    windSlice = loadImage("/Web Assets/Character/Weapons/Wind Slice.png")
     // grapple = loadImage("/Web Assets/Character/Weapons/Grapple.png")
     entitySprites = characterSprites; // for now
+    entitySprites.push(loadImage("/Web Assets/Character/Creatures/Skeleton Walking.png"));
+    entitySprites.push(loadImage("/Web Assets/Character/Creatures/Skeleton Basic.png"));
+    entitySprites.push(loadImage("/Web Assets/Character/Creatures/Grave.png"));
+    entitySprites.push(loadImage("/Web Assets/Character/Creatures/Bat Flying.png"));
 }
 
-/* When the openFullscreen() function is executed, open the video in fullscreen.
-Note that we must include prefixes for different browsers, as they don't support the requestFullscreen method yet */
-/* Get the documentElement (<html>) to display the page in fullscreen */
 var elem = document.documentElement;
-
 /* View in fullscreen */
 function openFullscreen() {
   if (elem.requestFullscreen) {
@@ -59,8 +62,9 @@ function openFullscreen() {
   }
 }
 
+let basicAttacks = 4;
 function setup(){
-    // openFullscreen();
+    openFullscreen();
     angleMode(DEGREES); 
     let canvas = createCanvas(screen.width,screen.height);
     for(let i=0; i<weaponSprites.length;i++){
@@ -69,8 +73,8 @@ function setup(){
         console.log(weaponSpritesAnimations[0]);
         for(let j = 0; j< frames; j++){
             let frameSize = (i == 0) ? 200:160; 
-            frames = (i == 2) ? 6:8;
-            if(i == 3){
+            frames = (i == basicAttacks) ? 6:8; // this loads the first ability, which is the arrow charge
+            if(i == basicAttacks + 1){
                 frames = 1;
             }
             console.log(frameSize + " frame size");
@@ -78,6 +82,19 @@ function setup(){
             weaponSpritesAnimations[i].push(img);
         }
         console.log(i);
+    }
+    for(let i = 0; i < entitySprites.length;i++){
+        if(i >= 5){
+            console.log("LOADING THE SKELETON WALKING");
+            let frames = [0,0,0,0,0,10,8,1,5];
+            entitySpritesAnimations[i] = [];
+            for(let j = 0; j < frames[i]; j++){
+                let frameSize = 160;
+                let img = entitySprites[i].get(j*frameSize,0,frameSize,frameSize);
+                entitySpritesAnimations[i].push(img);
+            }
+            console.log(entitySpritesAnimations);
+        }
     }
 }
 
@@ -113,6 +130,7 @@ function draw(){
             if(!menuMade){
                 resetButtons(); 
                 makeStatSelectScreen();
+                clearSelectors();
                 menuMade = true;
             } else{
                 drawStatSelectScreen();
@@ -123,16 +141,13 @@ function draw(){
         case "skill-waiting":
             break;
         case "gameplay":
-            // time = Date.now();
-            // deltaTime = time - timeLastFrame; 
-            // timeLastFrame = time;     
             for(let i = 0; i < entities.length; i++){
                 entities[i].resetForces();
             }
             drawGameplayScreen();
             let gravity = createVector(0,character.mass*0.5);
-            character.applyForce(gravity);
             for(let i = 0; i < entities.length; i++){
+                entities[i].applyForce(gravity);
                 entities[i].clearVelocities();
                 entities[i].collisionHandle(platforms);
                 entities[i].show();
@@ -146,21 +161,33 @@ function draw(){
                 fill(255);
                 let x = enemyEntities[i].x * (scaleFactorX);
                 let y = enemyEntities[i].y * (scaleFactorY);
-                text(enemyEntities[i].name,x,y-100);
+                if(enemyEntities[i].name != "Grave"){
+                    text(enemyEntities[i].name,x,y-100);
+                }
                 tint(enemyEntities[i].opacity,255);
-                image(entitySprites[enemyEntities[i].sprite],x,y,128*scaleX,128*scaleY);
+                if(enemyEntities[i].name == "Skeleton" || enemyEntities[i].name == "Vampire Bat"){
+                    image(entitySpritesAnimations[enemyEntities[i].animationIndex][enemyEntities[i].animationFrame],x,y-(50*scaleX),160*scaleX,160*scaleY)
+                } else if(enemyEntities[i].name == "Grave"){
+                    image(entitySpritesAnimations[7][0],x,y,160*scaleX,160*scaleY);
+                } 
+                else {
+                    image(entitySprites[enemyEntities[i].sprite],x,y,128*scaleX,128*scaleY);
+                }
                 tint(255,255);
 
                 // drawing the weapon 
-                push();
-                translate(enemyEntities[i].weaponPosX*scaleFactorX,enemyEntities[i].weaponPosY*scaleFactorY);
-                rotate(enemyEntities[i].weaponRotation);
-                if(enemyEntities[i].flipWeapon){
-                    scale(1,-1);
+                if(enemyEntities[i].name == "Skeleton" || enemyEntities[i].name == "Vampire Bat" || enemyEntities[i].name == "Grave"){
+
+                } else {
+                    push();
+                    translate(enemyEntities[i].weaponPosX*scaleFactorX,enemyEntities[i].weaponPosY*scaleFactorY);
+                    rotate(enemyEntities[i].weaponRotation);
+                    if(enemyEntities[i].flipWeapon){
+                        scale(1,-1);
+                    }
+                    image(weaponSpritesAnimations[enemyEntities[i].weaponSprite][enemyEntities[i].animationFrame],0,0,enemyEntities[i].weaponSpriteSize*scaleX,enemyEntities[i].weaponSpriteSize*scaleX);
+                    pop();
                 }
-                //let img = weaponSprites[enemyEntities[i].weaponSprite].get(enemyEntities[i].animationFrame,0,enemyEntities[i].weaponSpriteSize,enemyEntities[i].weaponSpriteSize);
-                image(weaponSpritesAnimations[enemyEntities[i].weaponSprite][enemyEntities[i].animationFrame],0,0,enemyEntities[i].weaponSpriteSize*scaleX,enemyEntities[i].weaponSpriteSize*scaleX);
-                pop();
             }
             for(let i = 0; i < enemyProjectiles.length; i++){
                 let scaleFactorX = scaleX/enemyProjectiles[i].scaleX;
@@ -168,6 +195,10 @@ function draw(){
                 console.log("Updating The Enemy Projectiles")
                 switch(enemyProjectiles[i].name){
                     case "Fireball":
+                        fill(enemyProjectiles[i].r,enemyProjectiles[i].g,enemyProjectiles[i].b,enemyProjectiles[i].alpha);
+                        ellipse(enemyProjectiles[i].x*scaleFactorX,enemyProjectiles[i].y*scaleFactorY,enemyProjectiles[i].radius*2,enemyProjectiles[i].radius*2);
+                        break;
+                    case "Lifesteal":
                         fill(enemyProjectiles[i].r,enemyProjectiles[i].g,enemyProjectiles[i].b,enemyProjectiles[i].alpha);
                         ellipse(enemyProjectiles[i].x*scaleFactorX,enemyProjectiles[i].y*scaleFactorY,enemyProjectiles[i].radius*2,enemyProjectiles[i].radius*2);
                         break;
@@ -191,12 +222,17 @@ function draw(){
                         line(enemyProjectiles[i].charX*scaleFactorX,enemyProjectiles[i].charY*scaleFactorY,enemyProjectiles[i].x*scaleFactorX,enemyProjectiles[i].y*scaleFactorY);
                         noStroke();
                         break;
+                    
                 }
             }
             sendAllEntities();
             sendAllProjectiles();
             let healthbarWidth = character.hp/character.maxHealth;
             if(currentHPWidth > healthbarWidth*(screen.width*0.486)){
+                currentHPWidth -= (currentHPWidth-(healthbarWidth*(screen.width*0.486)))/10;
+                console.log("health going down");
+            } else if(currentHPWidth < healthbarWidth*(screen.width*0.486)){
+                console.log("less than!");
                 currentHPWidth -= (currentHPWidth-(healthbarWidth*(screen.width*0.486)))/10;
             }
             imageMode(CORNER);
@@ -300,9 +336,20 @@ socket.on("enemy-circle-attack", (data) => {
 socket.on("enemy-projectile-packet", (data) => {
     data = data.data;
     enemyProjectiles = data.projectiles;
-    console.log(enemyProjectiles);
 })
 socket.on("damage-marker", (data) => {
     data = data.data;
     damageMarkers.push(data);
+})
+socket.on("heal", (data) => {
+    data = data.data;
+    character.heal(data.amount);
+    console.log("WE GOTTA HEAL!");
+})
+socket.on("bat-heal",(data) => {
+    data = data.data;
+    console.log("we were told to do the bat heal");
+    for(entity of entities){
+        entity.heal(data.amount);
+    }
 })

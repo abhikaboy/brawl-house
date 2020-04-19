@@ -7,11 +7,11 @@ Spread skill points before a battle.
 
 
 Characters. 
- - Wind swordsman 
+ - Valor 
     - All basic attacks slice the wind and make a second "wind attack" in that direction  
     - Whirlwind Flurry  
-    - Dash in a direction, reactivate to dash back to where you cast this 
-    - Dodge all attacks for a 0.5 Second Time period  
+    - Whirlwind Dash Dash in a direction, reactivate to dash back to where you cast this 
+    - Whirlwind Sprint all "wind attacks" are larger, faster, and stronger. Valor also gains incredible speed
     - Execute: deal massive damage in a big circle around you.  
  - Ember
     - Build "Fire" overtime. Attacking burning targets lets you do extra damage. All abilities use fire. 
@@ -46,6 +46,7 @@ This helps with data transfer and some other stuff
 
 https://lospec.com/palette-list/pear36
 https://www.slynyrd.com/blog?offset=1545138821275
+https://www.youtube.com/watch?v=VyonFThuNEo
 
 
 ( current fps / target fps ) * velocity

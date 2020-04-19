@@ -21,7 +21,7 @@ class Particle {
         }
         show() {
             blendMode(SCREEN);
-            fill(random(255),random(10),random(100),this.alpha);
+            fill(random(150),random(100),random(255),this.alpha);
             ellipse(this.pos.x,this.pos.y,this.size,this.size);
             blendMode(BLEND);
         }

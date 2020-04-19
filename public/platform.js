@@ -38,7 +38,20 @@ class Platform{
         
     }
 }
-let floor = new Platform(0,screen.width,screen.height*.9,screen.height+500,"Floor");
-let leftPlat = new Platform(0.1*screen.width,0.4125*screen.width,screen.height*.55,screen.height*.64,"Left");
+
+let floorTop = screen.height*.9;
+let middleTop = screen.height*.55;
+let middleBottom = screen.height*.64;
+let upperBottom = screen.height*0.256;
+
+let floor = new Platform(0,screen.width,    floorTop,
+    screen.height+500,
+    "Floor");
+let leftPlat = new Platform(0.1*screen.width,0.4125*screen.width,
+    middleTop,
+    middleBottom,
+    "Left");
 let rightPlat = new Platform(0.58125*screen.width,0.89675*screen.width,screen.height*.55,screen.height*.64,"Right");
-let topPlat = new Platform(0.348*screen.width,0.646*screen.width,screen.height*0.256,screen.height*0.344,"Top");
+let topPlat = new Platform(0.348*screen.width,0.646*screen.width,
+    upperBottom,
+    screen.height*0.344,"Top");

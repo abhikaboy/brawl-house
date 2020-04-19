@@ -1,10 +1,10 @@
 let menuMade = false;
 let buttonYPos = Math.floor(screen.height/10);
 let selectWidth = 500;
-let selectHeight = 80;
+let selectHeight = screen.height/8;
 let playMult = 3.6;
-let loginMult = playMult+1.1;
-let regMult = playMult+2.2;
+let loginMult = playMult+1.6;
+let regMult = playMult+2.9;
 let gaming = false;
 let makeMenu = function(){
     let playButton = new Button(0,500,buttonYPos*playMult,(buttonYPos*playMult) + selectHeight, () => {
@@ -31,41 +31,69 @@ let statScreenReady;
 let characterSelected = [];
 // 0 blue, 1 purple, 2 red, 3 shadow, 4 archer. 
 let characters = [];
+let played = false;
 let makeWaitingScreen = function(){
     resetButtons();
-    image(statScreenReady,0,0,screen.width,screen.height);
+    if(!played){
+        let back = document.getElementById("waiting");
+        let landing = document.getElementById("landing");
+        back.style.display = "block";
+        landing.style.display = "none";
+
+    }
+    background(0);
 }
 let makeCharacterSelect = function(){
-    background(0);
-    //image(selectScreen,0,0,screen.width,screen.height);
-    let topRowY = 80;
-    let bottomRowY = 315;
-    let height = 230;
-    let archerButton = new Button(160,405+160,topRowY,topRowY+height, () =>{
+
+    background(0); 
+    let topRowY = 0.26*screen.height;
+    let bottomRowY = 0.578*screen.height;
+    let height = 0.14*screen.height;
+    let space = .109*screen.width;
+    let width = 0.138*screen.width;
+    let archerLeft = 0.18*screen.width;
+    let shadowLeft = 0.289*screen.width;
+    let archerButton = new Button(archerLeft,archerLeft+width,topRowY,topRowY+height, () =>{
         character = new Archer();
         lockCharacter();
     });
-    let necromancerButton = new Button(565,355+565,topRowY,topRowY+height);
-    let emberButton = new Button(920,405+920,topRowY,topRowY+height, () =>{
+    let necromancerButton = new Button(shadowLeft+width+space,shadowLeft+(width*2)+space,bottomRowY,bottomRowY+height, () => {
+        character = new Necromancer();
+        lockCharacter();      
+    });
+    let emberButton = new Button(archerLeft+width+space,archerLeft+(width*2)+space,topRowY,topRowY+height, () =>{
         character = new Ember();
         lockCharacter();
     });
-    let swordsmanButton = new Button(280,480+280,bottomRowY,bottomRowY+height);
-    let shadowButton = new Button(760,480+760,bottomRowY,bottomRowY+height);
+    let swordsmanButton = new Button(archerLeft+(width*2)+(space*2),archerLeft+(width*3)+(space*2),topRowY,topRowY+height, () => {
+        character = new Valor();
+        lockCharacter(); 
+    });
+    let shadowButton = new Button(shadowLeft,shadowLeft+width,bottomRowY,bottomRowY+height);
 
     loadEnemySelector();
 }
+let clearSelectors = function(){
+    let menu = document.getElementById("theyCharSelect");
+    menu.style.display = "none";
+    menu = document.getElementById("myCharSelect");
+    menu.style.display = "none";
+}
 let loadEnemySelector = function(){
-    if(enemyCharacterSelected){
-        if(!enemyLocked){tint(255, 127);}
-        push();
-        translate(344+screen.width,484+screen.height);
-        imageMode(CENTER);
-        rotate(180);
-        image(characterSelected[enemySelectedIndex],screen.width/2,605,1072*scaleX,314*scaleY);
-        imageMode(CORNER);
-        pop();
-        if(!enemyLocked){tint(255, 255);}
+    if(enemyCharacterSelected && scene == "character-select"){
+        let menu = document.getElementById("theyCharSelect");
+        menu.style.backgroundImage =  "url('Web Assets/Character Selected/char" + enemySelectedIndex + ".png')" 
+        menu.style.width = screen.width + "px";
+        menu.style.height = screen.height + "px";
+        menu.style.backgroundSize = "100% 100%";
+        menu.style.opacity = "0.5";
+        console.log("changing the background url");
+        console.log(menu.style.backgroundImage);
+        menu.style.display = "block";
+    } else {
+        let menu = document.getElementById("theyCharSelect");
+        menu.style.display = "none";
+
     }
 }
 let isCharacterLocked = false;
@@ -79,6 +107,7 @@ let lockCharacter = function(){
     }
 }
 let makeWaitingCharacterScreen = function(){
+    let menu = document.getElementById("myCharSelect");
     background(0);
 }
 
@@ -108,9 +137,7 @@ let makeStatSelectScreen = function(){
                 scene = "gameplay"; // ;) finally
                 menuMade = false;
                 makeGameplayScreen();
-            } else {
-                console.log("telling server we are ready");// what do i need to start the game?
-            }
+            } 
             if(!startGameCountdownStarted){
                 startGameCountdown(); 
             }

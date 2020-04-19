@@ -16,6 +16,313 @@ class Ability{
 
     }
 }
+
+class SlashDash extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.toggle = true;
+        this.size;
+        this.dmg = 10;
+        this.cooldown = 5;
+        this.currentcooldown = 0;
+        this.dashing = false;
+        this.castLocation;
+        this.needsToReturn = false;
+        this.velocity;
+        this.damageProjectile;
+        this.dashLocation;
+        this.isDone = false;
+        this.setZero = false;
+    }
+    activate(x,y){
+        if(!this.needsToReturn){
+            this.active = true;
+            this.castLocation = createVector(x,y);
+            this.dashing = true;
+            this.needsToReturn = true;
+            this.dashLocation = createVector(mouseX,mouseY);
+            this.damageProjectile = new InvisbleAttack(5); 
+            setTimeout(() => {
+                this.setZero = true;
+                this.damageProjectile.die();
+            }, 100);
+        } else{
+            this.currentcooldown = this.cooldown;
+            this.needsToReturn = false;
+            this.dashing = true;
+            this.damageProjectile = new InvisbleAttack(10); 
+            setTimeout(() => {
+                this.setZero = true;
+                this.damageProjectile.die();
+                this.isDone = true;
+            }, 100);
+            this.decay();
+        }
+        console.log(this.dashing);
+    }
+    update(){
+        // uh idk?
+        if(this.active){
+            ellipse(this.castLocation.x,this.castLocation.y,30,30);
+            this.damageProjectile.update();
+        }
+    }
+    getVelocity(){
+        // going out 
+        if(this.needsToReturn){
+            let deltaX = this.dashLocation.x - character.position.x;
+            let deltaY = this.dashLocation.y - character.position.y;
+            let forceVector = createVector(deltaX,deltaY);
+            forceVector.normalize();
+            forceVector.mult(100);
+            if(this.setZero){
+                forceVector.mult(0);
+                this.dashing = false;
+                this.setZero = false;
+            }
+            this.velocity = forceVector;
+        } else { // returning 
+            let deltaX = this.castLocation.x - character.position.x;
+            let deltaY = this.castLocation.y - character.position.y;
+            let forceVector = createVector(deltaX,deltaY);
+            forceVector.normalize();
+            forceVector.mult(100);
+            if(this.setZero){
+                forceVector.mult(0);
+                this.dashing = false;
+                this.active = false;
+                this.setZero = false;
+            }
+            this.velocity = forceVector;
+        }
+        console.log(this.dashing);
+        return this.velocity;
+        
+    }
+    decay(){
+        setTimeout(() => {
+            this.currentcooldown -= 0.25;
+            if(this.currentcooldown <= 0){
+                console.log("off cooldown!");
+            } else{
+                this.decay();
+            }
+        },250)
+    }
+}
+class Slam extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.toggle = false;
+        this.dmg = 10;
+        this.cooldown = 2;
+        this.currentcooldown = 0;
+        this.dashing = false;
+        this.velocity;
+        this.damageProjectiles = [];
+        this.reachedBottom = false;
+        this.slamming;
+    }
+    activate(){
+        this.active = true;
+        this.currentcooldown = this.cooldown;
+        this.slamming = true;
+        this.decay();
+    }
+    update(){
+        if(this.slamming){
+
+        } 
+        if(this.reachedBottom && this.slamming){
+            this.slamming = false;
+            for(let i = -1; i <= 1; i+=2){
+                this.damageProjectiles.push(new WindAttack(character.position.x,character.position.y,createVector(50*i,0),10));
+            }
+        }
+        this.damageProjectiles.forEach(projectile => {
+            projectile.update();
+            if(!projectile.active){
+                this.active = false;
+            }
+        });
+    }
+    getVelocity(){
+        let vel = createVector(0,70);
+        return vel;
+    }
+    decay(){
+        setTimeout(() => {
+            this.currentcooldown -= 0.25;
+            if(this.currentcooldown <= 0){
+                console.log("off cooldown!");
+            } else{
+                this.decay();
+            }
+        },250)
+    }
+}
+class SkeletonSummon extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.cooldown  = 1; // 7
+        this.currentcooldown = 0;
+        this.skeleton;
+    }
+    activate(x,y){
+        this.active = true;
+        let xcord = random(0,screen.width);
+        let ycord = random(300,screen.height);
+        this.skeleton = new Skeleton(xcord,ycord);
+        this.currentcooldown = this.cooldown;
+        console.log("ACTIVATING");
+        entities.push(this.skeleton);
+        this.decay();
+    }
+    update(){
+        if(this.skeleton.alive == false){
+            this.active = false;
+        }
+    }
+    decay(){
+        setTimeout(() => {
+            this.currentcooldown -= 0.25;
+            if(this.currentcooldown <= 0){
+                console.log("off cooldown!");
+            } else{
+                this.decay();
+            }
+        },250)
+    }
+}
+class GraveRevival extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.cooldown  = 1; // 7
+        this.currentcooldown = 0;
+    }
+    activate(){
+        this.active = true;
+        this.currentcooldown = this.cooldown;
+        for(let i = 0; i < graves.length;i++){
+            let x = graves[i].position.x;
+            let y = graves[i].position.y;
+            if(graves[i].entity == "Skeleton"){
+                let skeleton = new Skeleton(x,y);
+                skeleton.hp = 10;
+                skeleton.damage = 1;
+                skeleton.graveDropChance = 0;
+                entities.push(skeleton);
+            }
+            entities.splice(entities.indexOf(graves[i]),1);
+            console.log(entities);
+            console.log("After Splice");
+            graves.splice(i,1);
+        }
+        console.log("ACTIVATING");
+        this.decay();
+    }
+    decay(){
+        setTimeout(() => {
+            this.currentcooldown -= 0.25;
+            if(this.currentcooldown <= 0){
+                console.log("off cooldown!");
+            } else{
+                this.decay();
+            }
+        },250)
+    }
+}
+class Impulse extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.toggle = true;
+        this.fireball; 
+        this.dir = createVector(0,0);
+        this.size;
+        this.dmg = 10;
+        this.cooldown = 10;
+        this.currentcooldown = 0;
+    } 
+    activate(x,y,size){
+        this.x = x;
+        this.y = y;
+        this.active = true;
+        this.size = size;
+        this.lifesteal = new LifeSteal(x,y,this.size.x/2,this.size,this.dmg);
+        this.currentcooldown = this.cooldown;
+        this.decay();
+    }
+    update(){
+        if(this.active){
+            console.log("updating ability 3");
+            this.lifesteal.update();
+            console.log(this.lifesteal.radius);
+            if(this.lifesteal.radius < 20){
+                this.disable();
+            }
+        }
+    } 
+    disable(){
+        projectiles.splice(this.lifesteal,1);
+        this.active = false;
+    }
+    decay(){
+        setTimeout(() => {
+            this.currentcooldown -= 0.25;
+            if(this.currentcooldown <= 0){
+                console.log("off cooldown!");
+            } else{
+                this.decay();
+            }
+        },250)
+    }
+}
+class VampireSwarm extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.cooldown  = 1; // 7
+        this.currentcooldown = 0;
+        this.bats = [];
+    }
+    activate(x,y){
+        this.active = true;
+        this.currentcooldown = this.cooldown;
+        console.log("ACTIVATING");
+        this.decay();
+        this.spawn();
+    }
+    update(){
+        // if(this.skeleton.alive == false){
+        //     this.active = false;
+        // }
+    }
+    decay(){
+        setTimeout(() => {
+            this.currentcooldown -= 0.25;
+            if(this.currentcooldown <= 0){
+                console.log("off cooldown!");
+            } else{
+                this.decay();
+            }
+        },250)
+    }
+    spawn(){
+        setTimeout(() => {
+            if(this.bats.length < 5){
+                console.log("Spawning Bat");
+                this.bats[this.bats.length] = new VampireBat(mouseX,mouseY);
+                entities.push(this.bats[this.bats.length-1]);
+                this.spawn();
+            }
+        },1000)
+    }
+}
 class ArrowShoot extends Ability{
     constructor(){
         super();
@@ -136,7 +443,60 @@ class Grapple extends Ability{
     }
 }
 class ArtemisBow extends Ability{
-    
+    constructor(){
+        super();
+        this.active = false;
+        this.cooldown = 15;
+        this.currentcooldown = 0;
+        this.duration = 3;
+
+        this.arrows = [];
+
+        this.wait = 150;
+        this.canShoot = true;
+    }
+    activate(){
+        this.currentcooldown = this.cooldown;
+        this.active = true;
+    }
+    update(){
+       for(let i = 0; i < this.arrows.length; i++){
+           this.arrows[i].update();
+           if(!this.arrows[i].active){
+               this.arrows.splice(i,1);
+           }
+       }
+    }
+    shoot(x,y){
+        if(this.canShoot){
+            let deltaX = (mouseX - x)/1;
+            let deltaY = (y - mouseY)/-1;
+            let dirVector = createVector(deltaX,deltaY);
+            dirVector.normalize();
+            dirVector.x *= 150;
+            dirVector.y *= 150;
+            this.arrows[this.arrows.length] = new ArtemisArrow(x,y,dirVector,2);
+            this.arrows[this.arrows.length-1].decay();
+            this.canShoot = false;
+            setTimeout(()=> {
+                this.canShoot = true;
+            },this.wait)
+        }
+
+    }
+    decay(){
+        setTimeout(() => {
+            if(this.duration > 0){
+                this.duration -= 0.25;
+                this.decay();
+            } else if(this.currentcooldown > 0){
+                this.currentcooldown -= 0.25;
+                this.decay();
+            } else {
+        
+            }
+        },250)
+    }
 }
 
 class FireBurst extends Ability{
@@ -202,8 +562,8 @@ class HotStreak extends Ability{
         else{
             this.direction = (mouseX > x) ? 1:-1;
             this.decay();
-            this.fires[this.fires.length] = new Fire(x,y,2,0.5); 
-            this.fires[this.fires.legth-1].decay();
+            // this.fires[this.fires.length] = new Fire(x,y,2,0.5); 
+            // this.fires[this.fires.legth-1].decay();
         }
     } 
     update(x,y){
@@ -214,7 +574,7 @@ class HotStreak extends Ability{
                 character.freeMove = true;
             }
             if(random() > 0.7 && this.duration > 1){
-                this.fires[this.fires.length] = new Fire(x,y,3,0.25); 
+                this.fires[this.fires.length] = new Fire(x,y,3,0.5); 
                 this.fires[this.fires.length-1].decay();
             }
             if(this.fires.length == 0){
