@@ -2,7 +2,7 @@ class Ability{
     constructor(){
         this.active;
         this.burn;
-        this.duration;  
+        this.duration = 5;  
         this.cooldown; 
         this.toggle; 
     }
@@ -14,6 +14,17 @@ class Ability{
     }
     activate(){
 
+    }
+    decay(){
+        setTimeout(() => {
+            this.currentcooldown -= 0.25;
+            this.duration -= 0.25;
+            if(this.currentcooldown <= 0){
+                console.log("off cooldown!");
+            } else{
+                this.decay();
+            }
+        },250)
     }
 }
 
@@ -42,7 +53,7 @@ class SlashDash extends Ability{
             this.dashing = true;
             this.needsToReturn = true;
             this.dashLocation = createVector(mouseX,mouseY);
-            this.damageProjectile = new InvisbleAttack(5); 
+            this.damageProjectile = new InvisbleAttack(3); 
             setTimeout(() => {
                 this.setZero = true;
                 this.damageProjectile.die();
@@ -117,13 +128,14 @@ class Slam extends Ability{
         this.active = false;
         this.toggle = false;
         this.dmg = 10;
-        this.cooldown = 2;
+        this.cooldown = 4;
         this.currentcooldown = 0;
         this.dashing = false;
         this.velocity;
         this.damageProjectiles = [];
         this.reachedBottom = false;
         this.slamming;
+        this.duration = 2;
     }
     activate(){
         this.active = true;
@@ -132,35 +144,82 @@ class Slam extends Ability{
         this.decay();
     }
     update(){
-        if(this.slamming){
-
+        if(this.duration <= 0){
+            this.active = false;
+            this.duration = 0;
         } 
         if(this.reachedBottom && this.slamming){
             this.slamming = false;
             for(let i = -1; i <= 1; i+=2){
-                this.damageProjectiles.push(new WindAttack(character.position.x,character.position.y,createVector(50*i,0),10));
+                this.damageProjectiles.push(new WindAttack(character.position.x,character.position.y,createVector(50*i,0),7));
+                this.damageProjectiles[this.damageProjectiles.length-1].checkPlatforms = false;
+                if(character.powered){
+                    this.damageProjectiles[this.damageProjectiles.length-1].powerup();
+                }
             }
         }
         this.damageProjectiles.forEach(projectile => {
             projectile.update();
             if(!projectile.active){
                 this.active = false;
+                this.damageProjectiles.splice(this.damageProjectiles.indexOf(projectile),1);
             }
         });
     }
     getVelocity(){
-        let vel = createVector(0,70);
+        let vel = createVector(0,65*scaleY);
         return vel;
     }
     decay(){
         setTimeout(() => {
             this.currentcooldown -= 0.25;
+            this.duration -= 0.25;
             if(this.currentcooldown <= 0){
                 console.log("off cooldown!");
             } else{
                 this.decay();
             }
         },250)
+    }
+}
+class WindBlessing extends Ability{
+    constructor(){
+        super();
+        this.active = false;
+        this.toggle = false;
+        this.dmg = 10;
+        this.cooldown = 5;
+        this.currentcooldown = 0;
+        this.dashing = false;
+        this.velocity;
+        this.damageProjectiles = [];
+        this.reachedBottom = false;
+        this.slamming;
+        this.duration = 1.5;
+
+        this.preSpeed;
+        this.preJump;
+    }
+    activate(){
+        this.active = true;
+        this.currentcooldown = this.cooldown;
+        this.decay();
+        character.powered = true;
+        this.preSpeed =  character.speed;
+        this.preJump = character.jumpPower;
+        character.speed *= 2;
+        character.jumpPower *= 1.2;
+        character.mass = 1;
+    }
+    update(){
+        if(this.duration > 0){
+        } else {
+            this.active = false;
+            character.speed = this.preSpeed;
+            character.jumpPower = this.preJump;
+            character.mass = 1;
+            character.powered = false;
+        }
     }
 }
 class SkeletonSummon extends Ability{
@@ -338,7 +397,7 @@ class ArrowShoot extends Ability{
         dirVector.normalize();
         dirVector.x *= 90;
         dirVector.y *= 90;
-        this.arrow = new Arrow(x,y,dirVector,10);
+        this.arrow = new Arrow(x,y,dirVector,5);
         this.arrow.decay();
         this.currentcooldown = this.cooldown;
         setTimeout(() => {
@@ -373,7 +432,7 @@ class MultiShot extends Ability{
                 dirVector.x *= 60;
                 dirVector.y *= 10+(i*50);
             }
-            this.arrows[this.arrows.length] = new Arrow(x,y,dirVector,10);
+            this.arrows[this.arrows.length] = new Arrow(x,y,dirVector,5);
             this.arrows[this.arrows.length-1].decay();
         }
         this.currentcooldown = this.cooldown;
@@ -498,7 +557,6 @@ class ArtemisBow extends Ability{
         },250)
     }
 }
-
 class FireBurst extends Ability{
     constructor(){
         super();
@@ -548,7 +606,7 @@ class HotStreak extends Ability{
         this.active = false;
         this.burn = true;
         this.duration = 2;
-        this.speed = 40;
+        this.speed = 50;
         this.toggle = true;
         this.direction;
 
@@ -577,7 +635,7 @@ class HotStreak extends Ability{
                 this.fires[this.fires.length] = new Fire(x,y,3,0.5); 
                 this.fires[this.fires.length-1].decay();
             }
-            if(this.fires.length == 0){
+            if(this.fires.length == 0 && this.duration < 1){
                 this.active = false;
             }
         }

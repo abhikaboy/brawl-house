@@ -307,11 +307,13 @@ class WindAttack extends Projectile{
         console.log("Wind Attack ID " + this.attackId);
         this.dmg = dmg;
         this.size = createVector(160,160);
-        this.duration = 1;
+        this.duration = 0.5;
         this.active;
         this.rotation;
         this.flip;
         this.active = true;
+        this.checkPlatforms = true;
+        this.sprite = windSlice;
     }    
     show(){
         let hypotenuse = Math.pow(Math.pow(this.velocity.x,2) + Math.pow(this.velocity.y,2),0.5);
@@ -320,12 +322,17 @@ class WindAttack extends Projectile{
             angle = (this.position.y > this.castLocation.y) ? -asin(this.velocity.x / hypotenuse)-180:asin(this.velocity.x / hypotenuse);
         }
         this.rotation = 90+angle;
-        push();
+        push();     
         translate(this.position.x,this.position.y);
         rotate(this.rotation);
         scale(-1,1);
-        image(windSlice,0,0,this.size.x*scaleX,this.size.y*scaleY);
+        image(this.sprite,0,0,this.size.x*scaleX,this.size.y*scaleY);
         pop();
+    }
+    powerup(){
+        this.dmg += 1;
+        this.sprite = blueWindSlice;
+        this.velocity.mult(1.5);
     }
     update(){
         if(this.active){
@@ -336,12 +343,14 @@ class WindAttack extends Projectile{
             let fakesizeX = this.size.x/4;
             let fakesizeY = this.size.y/4;
             let fakeSize = createVector(fakesizeX,fakesizeY);
-            for(let i = 0; i < platforms.length; i++){
-                let collision = platforms[i].checkCollisionSquare(this.position.x,this.position.y,fakeSize,this.velocity.x);
-                if(collision.state){
-                    this.duration = 0;
-                    this.active = false;
-                    projectiles.splice(projectiles.indexOf(this));
+            if(this.checkPlatforms){
+                for(let i = 0; i < platforms.length; i++){
+                    let collision = platforms[i].checkCollisionSquare(this.position.x,this.position.y,fakeSize,this.velocity.x);
+                    if(collision.state){
+                        this.duration = 0;
+                        this.active = false;
+                        projectiles.splice(projectiles.indexOf(this));
+                    }
                 }
             }
         }
@@ -353,14 +362,14 @@ class WindAttack extends Projectile{
     }
     decay(){
         setTimeout(() => {
-            this.duration -= 0.1;
+            this.duration -= 0.25;
             if(this.duration <= 0){
                 this.active = false;
                 projectiles.splice(projectiles.indexOf(this));
             } else {
                 this.decay();
             }
-        },100)
+        },250)
     }
 }
 class InvisbleAttack extends Projectile{

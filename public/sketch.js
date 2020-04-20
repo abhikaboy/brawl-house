@@ -15,6 +15,7 @@ let weaponSpritesAnimations = [];
 let entitySpritesAnimations = [];
 let arrow;
 let grapple;
+let blueWindSlice;
 
 let damageMarkers = [];
 // have a 2d array, first layer is the sprite sheet the second is the frames
@@ -39,7 +40,8 @@ function preload(){
 
     arrow = loadImage("/Web Assets/Character/Weapons/Archer Arrow.png");
     hook = loadImage("/Web Assets/Character/Weapons/Hook.png");
-    windSlice = loadImage("/Web Assets/Character/Weapons/Wind Slice.png")
+    windSlice = loadImage("/Web Assets/Character/Weapons/Wind Slice.png");
+    blueWindSlice = loadImage("/Web Assets/Character/Weapons/Blue Wind Slice.png");
     // grapple = loadImage("/Web Assets/Character/Weapons/Grapple.png")
     entitySprites = characterSprites; // for now
     entitySprites.push(loadImage("/Web Assets/Character/Creatures/Skeleton Walking.png"));
@@ -242,7 +244,7 @@ function draw(){
 
             fill(255);
             textSize(30);
-            //text(getFrameRate(),500,100);   
+            text(getFrameRate(),500,100);   
             
             for(let i = 0; i < damageMarkers.length; i++){
                 let scaleFactorX = scaleX / damageMarkers[i].scaleX;
@@ -352,4 +354,8 @@ socket.on("bat-heal",(data) => {
     for(entity of entities){
         entity.heal(data.amount);
     }
+})
+socket.on("new-particle", (data) => {
+    data = data.data;
+    particles.push(new Particle(data.x,data.y,data.dir));
 })

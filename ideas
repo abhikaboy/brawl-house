@@ -5,26 +5,33 @@ Spread skill points before a battle.
     - power 
 
 
+Ember counters Valor
+Valor counters Necromancer
 
+Necromancer Counters Shadow
+
+Shadow Counters Archer
+Archer Counters Necromancer
 Characters. 
  - Valor 
-    - All basic attacks slice the wind and make a second "wind attack" in that direction  
-    - Whirlwind Flurry  
-    - Whirlwind Dash Dash in a direction, reactivate to dash back to where you cast this 
+    - Wind Push Back?
+    x All basic attacks slice the wind and make a second "wind attack" in that direction  
+    x Dash in a direction and reactivate to dash back
+    x Slam to the ground and send two wind attacks to the sides of you
     - Whirlwind Sprint all "wind attacks" are larger, faster, and stronger. Valor also gains incredible speed
     - Execute: deal massive damage in a big circle around you.  
  - Ember
-    - Build "Fire" overtime. Attacking burning targets lets you do extra damage. All abilities use fire. 
-    - Fireball, shoot a blast of fire can Burn enemies. 
-    - Hot Steak, Must be on ground, dash in a line and leave a decaying trail of fire.
-    - Leave a trap that when walked over will have a fiery explosion. 
-    - World On Fire. leave behind a trail of fire everywhere you go. You move 1.5x fast. Cannot basic attack during this time. 
+    x Build "Fire" overtime. Attacking burning targets lets you do extra damage. All abilities use fire. 
+    x Fireball, shoot a blast of fire can Burn enemies. 
+    x Hot Steak, Must be on ground, dash in a line and leave a decaying trail of fire.
+    x Leave a trap that when walked over will have a fiery explosion. 
+    x World On Fire. leave behind a trail of fire everywhere you go. You move 1.5x fast. Cannot basic attack during this time. 
  - Grappling Archer
-    - Every Arrow Shot Slows and Weakens an enemy for 0.5 seconds. 
-    - Shoot an arrow (0.5 second cooldown)
-    - Multishot 
-    - Grapple. 
-    - Artimes Bow. replaces melee weapon with a bow and this thing shoots fast.
+    x Every Arrow Shot Slows and Weakens an enemy for 0.5 seconds. 
+    x Shoot an arrow (0.5 second cooldown)
+    x Multishot 
+    x Grapple. 
+    x Artimes Bow. replaces melee weapon with a bow and this thing shoots fast.
  - Shadow 
     - Backstab. Attacks where opponent is not facing deal double damage. Build "Darkness" overtime. 
     - Sneak attack, teleport behind opponent
@@ -34,15 +41,10 @@ Characters.
         - Screen could get darker in stages, would be a 5 second ability then 
  - Necromancer
     - Every other attack heals a little bit, All entities that die leave behind Graves
-    - Summon Skeleton (every 2 seconds)
-    - Revive Graves at half health and damage
-    - Impulse: in a circle, deal damage and heal for 1/4 TO ALL ENTITIES
-    - Summon a vampire bat every second for 5 seconds
-
-
-
-So basically create a sprite object with the "sprite index", x,y,and place in the sprite sheet.
-This helps with data transfer and some other stuff 
+    x Summon Skeleton (every 2 seconds)
+    x Revive Graves at half health and damage
+    x Impulse: in a circle, deal damage and heal for 1/4 TO ALL ENTITIES
+    x Summon a vampire bat every second for 5 seconds
 
 https://lospec.com/palette-list/pear36
 https://www.slynyrd.com/blog?offset=1545138821275

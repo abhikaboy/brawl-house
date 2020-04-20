@@ -97,8 +97,10 @@ class Character{
 
     takeDamage(dmg){
         if(!this.stillDodging){
-            this.hp -= dmg;
-            socket.emit("damage-marker",{x:this.position.x+random(-this.size.x,this.size.x),y:this.position.y+random(-this.size.y,0),dmg:dmg,room:roomId,scaleX:scaleX,scaleY:scaleY,alpha:255});
+            let realDmg = (1 - (this.resistance/100)) * dmg; 
+            realDmg = realDmg.toFixed(1);
+            this.hp -= realDmg;
+            socket.emit("damage-marker",{x:this.position.x+random(-this.size.x,this.size.x),y:this.position.y+random(-this.size.y,0),dmg:realDmg,room:roomId,scaleX:scaleX,scaleY:scaleY,alpha:255});
         } else{
             console.log("DODGED!!!!!");
         }
@@ -236,7 +238,7 @@ class Character{
     parseStats(hp,speed,power,resistance){
         let ret = [];
         ret.push(hp);
-        ret.push((speed/20));
+        ret.push((speed/15));
         ret.push((power/4));
         ret.push((resistance/2.5));
         return ret;
@@ -398,7 +400,7 @@ class Character{
         }
         this.characterVelocityChange();
         this.velocity.add(this.acceleration);
-        if(this.stillDodging && this.velocity.x > -1 && this.velocity.x < 1){
+        if(this.stillDodging && this.velocity.x > -2 && this.velocity.x < 2){
             this.stillDodging = false;
             this.freeMove = true;
             this.opacity = 255;
@@ -444,7 +446,7 @@ class Archer extends Character{
         super();
         this.name = "Archer";
         this.buttonIndex = 2;
-        this.mass = .75; 
+        this.mass = 1; 
         this.basehp = 100; //100
         this.basespeed = 10;
         this.basepower = 10; 
@@ -695,7 +697,7 @@ class Ember extends Character{
         }
     }
     executeAbilityTwo(){
-        if(!this.hotstreak.active && this.fire > 30){
+        if(!this.hotstreak.active && this.fire > 30 && this.dirBlocked == "only negative Y"){
             this.fire -= 30;
             this.hotstreak = new HotStreak();
             this.hotstreak.activate(this.dirBlocked,this.position.x,this.position.y+this.size.y/2);
@@ -755,7 +757,7 @@ class Necromancer extends Character{
         super();
         this.name = "Necromancer";
         this.buttonIndex = 1;
-        this.mass = .75; 
+        this.mass = 1; 
         this.basehp = 100; //100
         this.basespeed = 7;
         this.basepower = 10; 
@@ -867,7 +869,7 @@ class Skeleton extends Character{
         super();
         this.position = createVector(x,y);
         this.name = "Skeleton";
-        this.mass = .75; 
+        this.mass = 1; 
         this.hp = 15; //100
         this.maxHealth = 15;
         this.speed = 16;
@@ -1149,7 +1151,7 @@ class VampireBat extends Character{
         super();
         this.position = createVector(x,y);
         this.name = "Vampire Bat";
-        this.mass = .75; 
+        this.mass = 1; 
         this.hp = 10; //100
         this.maxHealth = 15;
         this.speed = 16;
@@ -1417,9 +1419,9 @@ class Valor extends Character{
         super();
         this.name = "Valor";
         this.buttonIndex = 1;
-        this.mass = .75; 
+        this.mass = 1; 
         this.basehp = 80; //100
-        this.basespeed = 7;
+        this.basespeed = 9;
         this.basepower = 10; 
         this.baseresistance = 5; 
         this.spriteIndex = 4;
@@ -1435,6 +1437,10 @@ class Valor extends Character{
         this.currentAttack = 0;
         this.slashDash = new SlashDash();
         this.slam = new Slam();
+        this.windBlessing = new WindBlessing();
+        this.jumpPower = -15;
+        this.windSliceSpeed = 40;
+        this.powered = false;
     }
     show(){
         this.drawName();
@@ -1448,7 +1454,16 @@ class Valor extends Character{
 
         this.updateAbilityOne();
         this.updateAbilityTwo();
-        // this.updateAbilityThree();
+        this.updateAbilityThree();
+    }
+    startParticleChain(){
+        setTimeout(()=> {
+            if(this.powered){
+                this.startParticleChain();
+                particles.push(new Particle(this.position.x,this.position.y,"up"));
+                socket.emit("new-particle",{x:this.position.x,y:this.position.y,dir:"up",room:roomId});
+            } 
+        },100)
     }
     sendCharacterData(){
         let health = this.hp/this.maxHealth
@@ -1464,8 +1479,11 @@ class Valor extends Character{
             let deltaY = (this.position.y - mouseY)/-1;
             let dirVector = createVector(deltaX,deltaY);
             dirVector.normalize();
-            dirVector.mult(40);
-            this.windAttack = new WindAttack(this.position.x,this.position.y,dirVector,3);
+            dirVector.mult(this.windSliceSpeed);
+            this.windAttack = new WindAttack(this.position.x,this.position.y,dirVector,2);
+            if(this.powered){
+                this.windAttack.powerup();
+            }
         }
     }
     characterVelocityChange(){
@@ -1504,7 +1522,7 @@ class Valor extends Character{
         this.slashDash.update();    
     }
     executeAbilityTwo(){
-        if(!this.slam.active && this.slam.currentcooldown <= 0){
+        if(!this.slam.active && this.slam.currentcooldown <= 0 && this.dirBlocked != "only negative Y"){
             this.slam = new Slam();
             this.slam.activate();
         }
@@ -1512,6 +1530,18 @@ class Valor extends Character{
     updateAbilityTwo(){
         if(this.slam.active){
             this.slam.update();
+        }
+    }
+    executeAbilityThree(){
+        if(!this.windBlessing.active && this.windBlessing.currentcooldown <= 0){
+            this.windBlessing = new WindBlessing();
+            this.windBlessing.activate();
+            this.startParticleChain();
+        }
+    }
+    updateAbilityThree(){
+        if(this.windBlessing.active){
+            this.windBlessing.update();
         }
     }
 }

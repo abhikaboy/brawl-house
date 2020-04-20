@@ -92,6 +92,9 @@ io.sockets.on('connection', (socket) => {
     socket.on("bat-heal", (data) => {
         socket.to(data.room).emit('bat-heal',{data:data});
     })
+    socket.on("new-particle", (data) => {
+        socket.to(data.room).emit("new-particle", {data:data});
+    })
 })
 
 console.log("we running");

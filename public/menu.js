@@ -209,7 +209,12 @@ let makeGameplayScreen = function(){
     resetButtons();
     let back = document.getElementById("charSelect");
     back.style.backgroundImage = "url('/Web Assets/Maps/map.jpg')";
-    background(0);
+    tint(255, 127);
+    //background('rgba(0,0,0,0.3)');
+    fill(0,0,0,200);
+    rect(0,0,screen.width,screen.height);
+    background(0,100);
+    tint(255, 255);
     imageMode(CENTER);
     let statBuffs = character.parseStats(statSliders[0].value,statSliders[1].value,statSliders[2].value,statSliders[3].value);
     console.log(statBuffs);
@@ -217,6 +222,8 @@ let makeGameplayScreen = function(){
     entities.push(character);
 }
 let drawGameplayScreen = function(){
+    //fill(0,0,0,200);
+    //rect(0,0,screen.width,screen.height);
     background(0);
-
+    //tint(255, 255);
 }
