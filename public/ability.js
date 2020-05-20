@@ -167,7 +167,7 @@ class Slam extends Ability{
         });
     }
     getVelocity(){
-        let vel = createVector(0,65*scaleY);
+        let vel = createVector(0,85*scaleY);
         return vel;
     }
     decay(){
@@ -397,7 +397,7 @@ class ArrowShoot extends Ability{
         dirVector.normalize();
         dirVector.x *= 90;
         dirVector.y *= 90;
-        this.arrow = new Arrow(x,y,dirVector,5);
+        this.arrow = new Arrow(x,y,dirVector,7.5);
         this.arrow.decay();
         this.currentcooldown = this.cooldown;
         setTimeout(() => {
@@ -422,6 +422,7 @@ class MultiShot extends Ability{
         this.active = true;
         let deltaX = (mouseX - x)/1;
         let deltaY = (y - mouseY)/-1;
+        // tan = opposite / adjacent  
         for(let i = 0; i < 3; i++){
             let dirVector = createVector(deltaX,deltaY);
             dirVector.normalize();
@@ -432,7 +433,7 @@ class MultiShot extends Ability{
                 dirVector.x *= 60;
                 dirVector.y *= 10+(i*50);
             }
-            this.arrows[this.arrows.length] = new Arrow(x,y,dirVector,5);
+            this.arrows[this.arrows.length] = new Arrow(x,y,dirVector,7.5);
             this.arrows[this.arrows.length-1].decay();
         }
         this.currentcooldown = this.cooldown;
@@ -505,7 +506,7 @@ class ArtemisBow extends Ability{
     constructor(){
         super();
         this.active = false;
-        this.cooldown = 15;
+        this.cooldown = 10;
         this.currentcooldown = 0;
         this.duration = 3;
 
@@ -534,7 +535,7 @@ class ArtemisBow extends Ability{
             dirVector.normalize();
             dirVector.x *= 150;
             dirVector.y *= 150;
-            this.arrows[this.arrows.length] = new ArtemisArrow(x,y,dirVector,2);
+            this.arrows[this.arrows.length] = new ArtemisArrow(x,y,dirVector,3);
             this.arrows[this.arrows.length-1].decay();
             this.canShoot = false;
             setTimeout(()=> {
@@ -662,7 +663,6 @@ class HotStreak extends Ability{
         },250)
     } 
 }
-// traps 
 class FireTrap{
     constructor(x,y,duration,dmg){
         this.position = createVector(x,y);

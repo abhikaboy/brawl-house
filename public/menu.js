@@ -69,7 +69,10 @@ let makeCharacterSelect = function(){
         character = new Valor();
         lockCharacter(); 
     });
-    let shadowButton = new Button(shadowLeft,shadowLeft+width,bottomRowY,bottomRowY+height);
+    let shadowButton = new Button(shadowLeft,shadowLeft+width,bottomRowY,bottomRowY+height, () => {
+        character = new Shadow();
+        lockCharacter();
+    });
 
     loadEnemySelector();
 }

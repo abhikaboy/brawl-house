@@ -29,9 +29,9 @@ class Particle {
             this.pos.add(this.vel); 
             this.alpha -= this.deathRate;
         }
-          finished() {
-            return this.alpha < 0;
-          }
+        finished() {
+          return this.alpha < 0;
+        }
 
     }
 let particleHandle = function(item,index,array){

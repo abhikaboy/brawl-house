@@ -15,7 +15,7 @@ class Projectile{
         this.animation;
         this.animationFrame = 0;
         this.animationFrameCount = 8; 
-        this.pushBack = false;
+        this.knockback = true;
         
         projectiles.push(this);
 
@@ -28,7 +28,7 @@ class Projectile{
         console.log("sending a square attack");
         if(random() > 0.2 && this.name == "Fireball"){
             socket.emit("new-square-attack",{x:this.position.x,y:this.position.y,dmg:this.dmg,scaleX:scaleX, scaleY:scaleY,
-                sizeX:this.size.x,sizeY:this.size.y,type:this.statusEffect,room:roomId,attackId:attackId});
+                sizeX:this.size.x,sizeY:this.size.y,type:this.statusEffect,room:roomId,attackId:attackId,knockback:this.knockback});
         } else {
             socket.emit("new-square-attack",{x:this.position.x,y:this.position.y,dmg:this.dmg,scaleX:scaleX, scaleY:scaleY,
                 sizeX:this.size.x,sizeY:this.size.y,type:this.statusEffect,room:roomId,attackId:attackId});           
@@ -143,6 +143,7 @@ class FireBall extends Projectile{
         this.r = random(100,255);
         this.g = random(20);
         this.b = 0
+        
     }
     show(){
         fill(this.r,this.g,this.b,this.alpha);
@@ -237,8 +238,8 @@ class GrappleHook extends Projectile{
         let deltaY = this.castLocation.y - this.position.y;
         let forceVector = createVector(-deltaX,-deltaY);
         forceVector.normalize();
-        forceVector.mult(5);
-        forceVector.y *= 0.9;
+        forceVector.mult(4);
+        forceVector.y *= 1.1;
         console.log(forceVector);
         return forceVector;
     }

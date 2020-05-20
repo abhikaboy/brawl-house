@@ -31,7 +31,7 @@ function preload(){
     for(let i=0; i< 5;i++){
         characterSprites.push(loadImage("/Web Assets/Character/" + characterNames[i] + ".png"));
     }
-    for(let i=0; i<4;i++){
+    for(let i=0; i<5;i++){
         weaponSprites.push(loadImage("/Web Assets/Character/Weapons/basic" +i+".png"));
     }
     for(let i = 0; i < 7; i++){
@@ -64,7 +64,7 @@ function openFullscreen() {
   }
 }
 
-let basicAttacks = 4;
+let basicAttacks = 5;
 function setup(){
     openFullscreen();
     angleMode(DEGREES); 
@@ -147,7 +147,7 @@ function draw(){
                 entities[i].resetForces();
             }
             drawGameplayScreen();
-            let gravity = createVector(0,character.mass*0.5);
+            let gravity = createVector(0,character.mass*1.35);
             for(let i = 0; i < entities.length; i++){
                 entities[i].applyForce(gravity);
                 entities[i].clearVelocities();

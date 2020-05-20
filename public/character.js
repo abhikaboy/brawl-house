@@ -5,6 +5,7 @@ let graves = [];
 let entities = [];
 let isCharacterSelected = false;
 let attackId = 0;
+let baseJump = -13.25;
 let idealTime = 16.6667;
 class Character{
     constructor(){
@@ -41,7 +42,7 @@ class Character{
         this.removeXVelNeg;
 
         this.dirBlocked; 
-        this.jumpPower = -16.25;
+        this.jumpPower = baseJump*2;
         this.dodging = false;
         this.stillDodging = false;
         this.lastMove;
@@ -72,6 +73,10 @@ class Character{
 
         this.dead = false;
         this.graveDropChance = 1;
+        this.knockbackForces = [];
+
+        this.stamina = 100;
+        this.startStaminaRegen();
     }
     die(){
         entities.splice(entities.indexOf(this),1);
@@ -89,9 +94,10 @@ class Character{
     }
     basicAttack(){
         //"doing the basic attack!");
-        if(this.basicAttacking == false){
+        if(this.basicAttacking == false && this.stamina >= 35){
             this.basicAttacking = true;
             attackId++;
+            this.stamina -= 35;
         }
     }
 
@@ -117,9 +123,9 @@ class Character{
             let result = this.detectAttackRecievedSqaure(x,y,scaleFactorX,scaleFactorY,sizeX,sizeY);
             if(result){
                 this.takeDamage(dmg);
-                //"HIT");
+                this.addKnockback(this.calculateKnockback(x*scaleFactorX,y*scaleFactorY,dmg,this.position.x,this.position.y));
                 if(type == "Lifesteal"){
-                    socket.emit("enemy-heal",{amount:dmg/2,room:roomId});
+                    socket.emit("enemy-heal",{amount:dmg,room:roomId});
                 } else if(type == "Bat Lifesteal"){
                     socket.emit("bat-heal",{amount:dmg/2,room:roomId});
                 } else {
@@ -145,8 +151,8 @@ class Character{
             }       
         }
     }
-    sendSquareAttack(x,y,dmg,sizeX,sizeY,type,attackId){
-        socket.emit("new-square-attack",{x:x,y:y,dmg:dmg,scaleX:scaleX,scaleY:scaleY,sizeX:sizeX,sizeY:sizeY,type:type,room:roomId,attackId:attackId});
+    sendSquareAttack(x,y,dmg,sizeX,sizeY,type,attackId,knockback){
+        socket.emit("new-square-attack",{x:x,y:y,dmg:dmg,scaleX:scaleX,scaleY:scaleY,sizeX:sizeX,sizeY:sizeY,type:type,room:roomId,attackId:attackId,knockback:knockback});
     }
     sendCircleAttack(radius,dmg,x,y,type,atkId){
         socket.emit("new-circle-attack",{x:x,y:y,dmg:dmg,scaleX:scaleX,scaleY:scaleY,radius:radius,type:type,room:roomId,attackId:atkId});
@@ -218,16 +224,25 @@ class Character{
         }
     }
     jump(){
-        if(this.jumpsLeft > 0 && !this.grappling){
+        if(this.jumpsLeft > 0 && !this.grappling && this.stamina >= 20){
             this.velocity.y = this.jumpPower;
             this.jumpsLeft--;
+            this.stamina -= 15;
         }
     }
     dodge(){
-        if(!this.grappling){
+        if(!this.grappling && this.stamina >= 50){
             this.dodging = true;
             this.stillDodging = true;
+            this.stamina -= 50;
         }
+    }
+    startStaminaRegen(){
+        setTimeout(()=>{
+            this.stamina += 5;
+            this.stamina = constrain(this.stamina,0,100);
+            this.startStaminaRegen();
+        },125)
     }
     checkPlatformCollisions(platform){
         let collided = platform.checkCollisionSquare();
@@ -258,6 +273,27 @@ class Character{
     }
     applyForce(force){
         this.forces.push(force);
+    }
+    calculateKnockback(x,y,dmg,posx,posy){
+        let deltaX = x - posx;
+        let deltaY = y - posy;
+        let forceVector = createVector(-deltaX,-deltaY);
+        forceVector.normalize();
+        forceVector.mult((Math.pow((dmg+1),0.5))/(Math.pow((this.knockbackForces.length+1),3)));
+        console.log(forceVector);
+        return forceVector;
+    }
+    addKnockback(force){
+        this.knockbackForces.push(force);
+        setTimeout(()=>{
+            this.knockbackForces.splice(this.knockbackForces.indexOf(force),1);
+        },500);
+    }
+    applyKnockback(){
+        for(let i = 0; i < this.knockbackForces.length;i++){
+            this.applyForce(this.knockbackForces[i]);
+            console.log("APPLYING A FORCE");
+        }
     }
     constrainEdges(){
         this.position.x = constrain(this.position.x,this.size.x/2,screen.width-this.size.x/2);
@@ -338,7 +374,7 @@ class Character{
         }
         push();
         deltaX = constrain(deltaX,this.size.x/-2,this.size.x/2);
-        deltaY = constrain(deltaY,this.size.y/-4,this.size.x/4);
+        deltaY = constrain(deltaY,this.size.y/-2,this.size.x/2);
         this.weaponPos = createVector(this.position.x+(deltaX),this.position.y+(deltaY*-1))
         translate(this.weaponPos.x,this.weaponPos.y);
         this.weaponRotation = 90-angleToCursor;
@@ -353,7 +389,7 @@ class Character{
     basicAttackHandle(){
         if(this.basicAttacking){
             if(frameCount % 2 == 0){
-                this.sendSquareAttack(this.weaponPos.x,this.weaponPos.y,5,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"basic",attackId);
+                this.sendSquareAttack(this.weaponPos.x,this.weaponPos.y,5,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"basic",attackId,true);
                 this.weaponAnimationFrame++;
             }
             if(this.weaponAnimationFrame == this.basicAttackFrameCount){
@@ -367,6 +403,13 @@ class Character{
         fill(255,255,255);
         textAlign(CENTER, CENTER);
         text(this.name,this.position.x,this.position.y-this.size.y/1.5);
+        rectMode(CORNER);
+        fill(52);
+        rect(this.position.x-this.size.x/2,this.position.y-this.size.y,this.size.x,20);
+        fill(0,255,0);
+        rect(this.position.x-this.size.x/2,this.position.y-this.size.y,this.size.x*(this.stamina/100),20);
+        fill(255);
+        //text(this.stamina,this.position.x,this.position.y-this.size.y);
     }
     grappleHandle(){
 
@@ -379,6 +422,7 @@ class Character{
         this.netForce.x = 0;
         this.netForce.y = 0;
         this.grappleHandle();
+        this.applyKnockback();  
         this.applyFriction();
         for(let i = 0; i < this.forces.length; i++){
             this.netForce.add(this.forces[i]);
@@ -393,14 +437,14 @@ class Character{
         this.acceleration = createVector(this.netForce.x/this.mass,this.netForce.y/this.mass);
         if(this.dodging){
             let direction = (mouseX>this.position.x) ? 1:-1;
-            this.velocity.x = 31.25*direction;
+            this.velocity.x = 30.25*direction;
             this.dodging = false;
             this.freeMove = false;
             this.opacity = 200;
         }
         this.characterVelocityChange();
         this.velocity.add(this.acceleration);
-        if(this.stillDodging && this.velocity.x > -2 && this.velocity.x < 2){
+        if(this.stillDodging && this.velocity.x > -7 && this.velocity.x < 7){
             this.stillDodging = false;
             this.freeMove = true;
             this.opacity = 255;
@@ -475,8 +519,9 @@ class Archer extends Character{
         this.holdingArtemisBow = false;
     }
     basicAttack(){
-        if(!this.basicAttacking && !this.shooting && this.weaponAnimationFrame < 3 && !this.multishooting && !this.holdingArtemisBow){
+        if(!this.basicAttacking && !this.shooting && this.weaponAnimationFrame < 3 && !this.multishooting && !this.holdingArtemisBow && this.stamina > 35){
             this.basicAttacking = true;
+            this.stamina -= 35;
             attackId++;
         }
     }
@@ -667,9 +712,9 @@ class Ember extends Character{
 
         tint(this.opacity,255);
         fill(52);
-        rect(this.position.x-this.size.x/2, this.position.y - this.size.x,this.maxFire,20);
+        rect(this.position.x-this.size.x/2, this.position.y - this.size.y*1.2,this.maxFire,20);
         fill(255,30,30);
-        rect(this.position.x-this.size.x/2, this.position.y - this.size.x,this.fire,20);        
+        rect(this.position.x-this.size.x/2, this.position.y - this.size.y*1.2,this.fire,20);        
         image(this.sprite,this.position.x,this.position.y,128*scaleX,128*scaleY);
         tint(255,255);
 
@@ -893,7 +938,7 @@ class Skeleton extends Character{
         this.canJump = true;
         this.jumpsLeft = 2;
         this.grappling = false;
-        this.jumpPower = -22;
+        this.jumpPower = -26;
         this.friction = 3;
         this.damage = 2;
 
@@ -920,16 +965,17 @@ class Skeleton extends Character{
     }
     basicAttack(){
         //"doing the basic attack!");
-        if(this.basicAttacking == false){
+        if(this.basicAttacking == false && this.stamina > 35){
             this.currentFrame = 0;
             this.basicAttacking = true;
             attackId++;
+            this.stamina -= 35;
         }
     }
     basicAttackHandle(){
         if(this.basicAttacking){
             if(frameCount % 2 == 0){
-                this.sendSquareAttack(this.position.x,this.position.y,this.damage,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"basic",attackId);
+                this.sendSquareAttack(this.position.x,this.position.y,this.damage,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"basic",attackId,true);
                 this.currentFrame++;
             }
             if(this.currentFrame == this.basicAttackFrameCount){
@@ -1175,7 +1221,7 @@ class VampireBat extends Character{
         this.canJump = true;
         this.jumpsLeft = 2;
         this.grappling = false;
-        this.jumpPower = -22;
+        this.jumpPower = -26;
         this.friction = 3;
         this.damage = 2;
 
@@ -1200,7 +1246,7 @@ class VampireBat extends Character{
     basicAttackHandle(){
         if(this.basicAttacking){
             if(frameCount % 2 == 0){
-                this.sendSquareAttack(this.position.x,this.position.y-50,this.damage,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"Bat Lifesteal",attackId);
+                this.sendSquareAttack(this.position.x,this.position.y-50,this.damage,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"Bat Lifesteal",attackId,true);
                 this.attackFrame++;
             }
             if(this.attackFrame == this.basicAttackFrameCount){
@@ -1438,7 +1484,7 @@ class Valor extends Character{
         this.slashDash = new SlashDash();
         this.slam = new Slam();
         this.windBlessing = new WindBlessing();
-        this.jumpPower = -15;
+        this.jumpPower = baseJump*1.9;
         this.windSliceSpeed = 40;
         this.powered = false;
     }
@@ -1470,7 +1516,8 @@ class Valor extends Character{
         socket.emit("enemy-char-data",{percentHealth: health,room:roomId});
     }
     basicAttack(){
-        if(this.basicAttacking == false){
+        if(this.basicAttacking == false && this.stamina >= 35){
+            this.stamina -= 35;
             this.basicAttacking = true;
             attackId++;
             this.currentAttack = attackId;
@@ -1511,20 +1558,23 @@ class Valor extends Character{
         }
     }
     executeAbilityOne(){
-            if(!this.slashDash.active && this.slashDash.currentcooldown <= 0){
+            if(!this.slashDash.active && this.slashDash.currentcooldown <= 0 && this.stamina >= 20){
                 this.slashDash = new SlashDash();
+                this.stamina -= 20;
             }
-            if(!this.slashDash.isDone){
+            if(!this.slashDash.isDone && this.stamina >= 20){
                 this.slashDash.activate(this.position.x,this.position.y);
+                this.stamina -= 20;
             }
     }
     updateAbilityOne(){
         this.slashDash.update();    
     }
     executeAbilityTwo(){
-        if(!this.slam.active && this.slam.currentcooldown <= 0 && this.dirBlocked != "only negative Y"){
+        if(!this.slam.active && this.slam.currentcooldown <= 0 && this.dirBlocked != "only negative Y" && this.stamina > 25){
             this.slam = new Slam();
             this.slam.activate();
+            this.stamina -= 25;
         }
     }
     updateAbilityTwo(){
@@ -1546,6 +1596,63 @@ class Valor extends Character{
     }
 }
 class Shadow extends Character{
+    constructor(){
+        super();
+        this.name = "Shadow";
+        this.buttonIndex = 1;
+        this.mass = 1; 
+        this.basehp = 80; //100
+        this.basespeed = 9;
+        this.basepower = 10; 
+        this.baseresistance = 5; 
+        this.spriteIndex = 3;
+        this.sprite = characterSprites[this.spriteIndex];
+        this.ghost = false;
+        this.bodyType = "square";
+        this.weaponSprite = 4;
+        this.weaponSpriteSize = 160;
+        this.basicAttackFrameCount = 8;
+        this.basicAttacking = false;
+        this.basicAnimation = weaponSpritesAnimations[this.weaponSprite];
+    }
+    show(){
+        this.drawName();
+
+        tint(this.opacity,255);
+        image(this.sprite,this.position.x,this.position.y,128*scaleX,128*scaleY);
+        tint(255,255);
+
+        this.drawWeapon(this.basicAnimation);
+        this.basicAttackHandle();
+    }
+    startParticleChain(){
+        setTimeout(()=> {
+            if(this.powered){
+                this.startParticleChain();
+                particles.push(new Particle(this.position.x,this.position.y,"up"));
+                socket.emit("new-particle",{x:this.position.x,y:this.position.y,dir:"up",room:roomId});
+            } 
+        },100)
+    }
+    sendCharacterData(){
+        let health = this.hp/this.maxHealth
+        socket.emit("enemy-char-data",{percentHealth: health,room:roomId});
+    }
+    characterVelocityChange(){
+
+    }
+    basicAttackHandle(){
+        if(this.basicAttacking){
+            if(frameCount % 2 == 0){
+                this.sendSquareAttack(this.weaponPos.x,this.weaponPos.y,5,this.weaponSpriteSize*scaleX*0.8,this.weaponSpriteSize*scaleY,"basic",this.currentAttack);
+                this.weaponAnimationFrame = (random()>0.5) ? this.weaponAnimationFrame+1:this.weaponAnimationFrame+2;
+            }
+            if(this.weaponAnimationFrame >= this.basicAttackFrameCount){
+                this.weaponAnimationFrame = 0;
+                this.basicAttacking = false;
+            }
+        }
+    }
 
 }
 class Grave extends Character{
